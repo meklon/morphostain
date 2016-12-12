@@ -27,7 +27,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", required=True, help="Path to the directory or file")
     parser.add_argument("-t", "--thresh", required=False, default=40,
-                        type=int, help="Global threshold for DAB-positive area,"
+                        type=int, help="Global threshold for stain-positive area,"
                                        "from 0 to 100.Optimal values are usually"
                                        " located from 35 to 55.")
     parser.add_argument("-e", "--empty", required=False, default=101,
@@ -65,8 +65,7 @@ def get_image_filenames(path):
 
 def calc_deconv_matrix(vector_raw_stains):
     """
-    Custom calculated matrix of lab's stains DAB + Hematoxylin
-    The raw matrix was moved to the global scope before main() function as a constant
+    Calculating matrix for deconvolution
     """
 
     vector_raw_stains[2, :] = np.cross(vector_raw_stains[0, :], vector_raw_stains[1, :])
@@ -80,7 +79,7 @@ def separate_channels(image_original, matrix_dh):
     """
 
     image_separated = color.separate_stains(image_original, matrix_dh)
-    stain_dab = image_separated[..., 1]
+    stain = image_separated[..., 1]
     # Hematox channel separation is disabled, it could be switched on if image with both stains is needed.
     # one of plot_figure() subplots should be replaced with stainHematox
 
@@ -89,18 +88,18 @@ def separate_channels(image_original, matrix_dh):
     # 1-D array for histogram conversion, 1 was added to move the original range from
     # [-1,0] to [0,1] as black and white respectively. Warning! Magic numbers.
     # Anyway it's not a trouble for correct thresholding. Only for histogram aspect.
-    stain_dab = (stain_dab + 1) * 200
+    stain = (stain + 1) * 200
     # Histogram shift. This correcion makes the background really blank. After the correction
     # numpy clipping is performed to fit the 0-100 range
-    stain_dab -= 18
-    stain_dab = np.clip(stain_dab, 0, 100)
-    stain_dab_1d = np.ravel(stain_dab)
+    stain -= 18
+    stain = np.clip(stain, 0, 100)
+    stain_1d = np.ravel(stain)
     # Extracting Lightness channel from HSL of original image
     # L-channel is multiplied to 100 to get the range 0-100 % from 0-1. It's easier to use with
     # empty area threshold
     image_hsl = hasel.rgb2hsl(image_original)
     channel_lightness = (image_hsl[..., 2] * 100)
-    return stain_dab, stain_dab_1d, channel_lightness
+    return stain, stain_1d, channel_lightness
 
 
 def log_and_console(path_output_log, text_log, bool_log_new=False):
@@ -133,39 +132,39 @@ def log_only(path_output_log, text_log):
             fileLog.write('\n')
 
 
-def count_thresholds(stain_dab, channel_lightness, thresh_default, thresh_empty_default):
+def count_thresholds(stain, channel_lightness, thresh_default, thresh_empty_default):
     """
-    Counts thresholds. stain_dab is a distribution map of DAB stain, channel_lightness is a L channel from
-    original image in HSL color space. The output are the thresholded images of DAB-positive areas and
+    Counts thresholds. "stain" is a distribution map of stain, channel_lightness is a L channel from
+    original image in HSL color space. The output are the thresholded images of stain-positive areas and
     empty areas. thresh_default is also in output as plot_figure() needs it to make a vertical line of
     threshold on a histogram.
     """
 
-    thresh_dab = stain_dab > thresh_default
+    thresh_stain = stain > thresh_default
     thresh_empty = channel_lightness > thresh_empty_default
-    return thresh_dab, thresh_empty
+    return thresh_stain, thresh_empty
 
 
-def count_areas(thresh_dab, thresh_empty):
+def count_areas(thresh_stain, thresh_empty):
     """
     Count areas from numpy arrays
     """
 
-    area_all = float(thresh_dab.size)
+    area_all = float(thresh_stain.size)
     area_empty = float(np.count_nonzero(thresh_empty))
-    area_dab_pos = float(np.count_nonzero(thresh_dab))
+    area_stain_pos = float(np.count_nonzero(thresh_stain))
 
     # Count relative areas in % with rounding
-    # NB! Relative DAB is counted without empty areas
+    # NB! Relative stained area is counted without empty areas if active
     area_rel_empty = round((area_empty / area_all * 100), 2)
-    area_rel_dab = round((area_dab_pos / (area_all - area_empty) * 100), 2)
-    return area_rel_empty, area_rel_dab
+    area_rel_stain = round((area_stain_pos / (area_all - area_empty) * 100), 2)
+    return area_rel_empty, area_rel_stain
 
 
-def plot_figure(image_original, stain_dab, stain_dab_1d, channel_lightness, thresh_dab, thresh_empty,
+def plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty,
                 thresh_default, tresh_empty_default):
     """
-    Function plots the figure for every sample image. It creates the histogram from the stainDAB array.
+    Function plots the figure for every sample image. It creates the histogram from the stain array.
     Then it takes the bins values and clears the plot. That's done because fill_between function doesn't
     work with histogram but only with ordinary plots. After all function fills the area between zero and
     plot if the values are above the threshold.
@@ -177,11 +176,11 @@ def plot_figure(image_original, stain_dab, stain_dab_1d, channel_lightness, thre
 
     plt.subplot(232)
     plt.title('Stain')
-    plt.imshow(stain_dab, cmap=plt.cm.gray)
+    plt.imshow(stain, cmap=plt.cm.gray)
 
     plt.subplot(233)
     plt.title('Histogram')
-    (n, bins, patches) = plt.hist(stain_dab_1d, bins=128, range=[0, 100], histtype='step', fc='k', ec='#ffffff')
+    (n, bins, patches) = plt.hist(stain_1d, bins=128, range=[0, 100], histtype='step', fc='k', ec='#ffffff')
     # As np.size(bins) = np.size(n)+1, we make the arrays equal to plot the area after threshold
     bins_equal = np.delete(bins, np.size(bins)-1, axis=0)
     # clearing subplot after getting the bins from hist
@@ -201,7 +200,7 @@ def plot_figure(image_original, stain_dab, stain_dab_1d, channel_lightness, thre
 
     plt.subplot(235)
     plt.title('Stain-positive area')
-    plt.imshow(thresh_dab, cmap=plt.cm.gray)
+    plt.imshow(thresh_stain, cmap=plt.cm.gray)
 
     if not tresh_empty_default>100:
         plt.subplot(236)
@@ -255,7 +254,7 @@ def check_mkdir_output_path(path_output):
         print("Output result directory already exists. All the files inside would be overwritten!")
 
 
-def grayscale_to_stain_color(stain_dab):
+def grayscale_to_stain_color(stain):
     """
     Converts grayscale map of stain distribution to the colour representation.
     The original grayscale is used as a L-channel in HSL colour space.
@@ -263,14 +262,14 @@ def grayscale_to_stain_color(stain_dab):
     Disabled now, fix needed.
     """
     # todo: Fix the grayscale to colour conversion
-    # DAB colour in HSL
+    # Stain colour in HSL
     array_image_hsl = np.zeros((480, 640, 3), dtype='float')
     array_image_hsl[..., 0] = 0.0859375  # 25/256 Hue
     array_image_hsl[..., 1] = 0.34375  # 88/256 Saturation
-    stain_dab = (255 - stain_dab)/256
-    array_image_hsl[..., 2] = stain_dab  # Lightness
-    image_stain_dab_color = hasel.hsl2rgb(array_image_hsl)
-    return image_stain_dab_color
+    stain = (255 - stain) / 256
+    array_image_hsl[..., 2] = stain  # Lightness
+    image_stain_color = hasel.hsl2rgb(array_image_hsl)
+    return image_stain_color
 
 
 def resize_input_image(image_original, size):
@@ -297,18 +296,18 @@ def image_process(array_data, var_pause, matrix_dh, args, pathOutput, pathOutput
     size_image = 480, 640
     image_original = resize_input_image(image_original, size_image)
 
-    stain_dab, stain_dab_1d, channel_lightness = separate_channels(image_original, matrix_dh)
-    thresh_dab, thresh_empty = count_thresholds(stain_dab, channel_lightness, args.thresh, args.empty)
-    area_rel_empty, area_rel_dab = count_areas(thresh_dab, thresh_empty)
-    # stain_dab = grayscale_to_stain_color(stain_dab)
+    stain, stain_1d, channel_lightness = separate_channels(image_original, matrix_dh)
+    thresh_stain, thresh_empty = count_thresholds(stain, channel_lightness, args.thresh, args.empty)
+    area_rel_empty, area_rel_stain = count_areas(thresh_stain, thresh_empty)
+    # stain = grayscale_to_stain_color(stain)
 
     # Close all figures after cycle end
     plt.close('all')
 
-    array_data = np.vstack((array_data, area_rel_dab))
+    array_data = np.vstack((array_data, area_rel_stain))
 
     # Creating the complex image
-    plot_figure(image_original, stain_dab, stain_dab_1d, channel_lightness, thresh_dab, thresh_empty, args.thresh,
+    plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty, args.thresh,
                 args.empty)
     plt.savefig(path_output_image, dpi=args.dpi)
 
@@ -342,12 +341,12 @@ def group_analyze(filenames, array_data, path_output, dpi):
     array_file_group = group_filenames(filenames)
 
     # Creating pandas DataFrame
-    column_names = ['Group', 'DAB+ area, %']
+    column_names = ['Group', 'Stain+ area, %']
     data_frame_data = np.hstack((array_file_group, array_data))
 
     df = pd.DataFrame(data_frame_data, columns=column_names)
     df = df.convert_objects(convert_numeric=True)
-    groupby_group = df['DAB+ area, %'].groupby(df['Group'])
+    groupby_group = df['Stain+ area, %'].groupby(df['Group'])
     data_stats = groupby_group.agg([np.mean, np.std, np.median, np.min, np.max])
     data_stats.to_csv(path_output_stats)
     print(data_stats)
@@ -358,17 +357,6 @@ def plot_group(data_frame, path_output, dpi):
     # optional import
     import seaborn as sns
     path_output_image = os.path.join(path_output, "summary_statistics.png")
-
-    # # Plotting swarmplot
-    # plt.figure(num=None, figsize=(15, 7), dpi=120)
-    # sns.set_style("whitegrid")
-    #
-    # plt.title('Violin plot with single measurements')
-    # sns.violinplot(x="Group", y="DAB+ area", data=data_frame, inner=None)
-    # sns.swarmplot(x="Group", y="DAB+ area", data=data_frame, color="w", alpha=.5)
-    # plt.savefig(path_output_image)
-    #
-    # plt.tight_layout()
 
     sns.set_style("whitegrid")
     sns.set_context("talk")
