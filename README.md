@@ -1,8 +1,8 @@
-# DAB analyzer
-Python soft for DAB-chromagen analysis. Software counts the stained area with DAB-chromagen using the typical immunohistochemistry protocols. After the analysis user can measure the difference of proteins content in tested samples.
+# MorphoStain
+Python soft for morphometric stain analysis. Software counts the stained area with determined stain (DAB-chromagen for example) using the typical immunohistochemistry protocols. After the analysis user can measure the difference of proteins content in tested samples.
 
 ### Application:
-Quantitative analysis of extracellular matrix proteins in IHC-analysis, designed for scientists in biotech sphere. 
+Quantitative analysis of extracellular matrix proteins in IHC-analysis, designed for scientists in biotech sphere. Could be also used for general morphometric analysis.
 
 ### Requirements:
 Python 2.7 or Python 3.4-3.5

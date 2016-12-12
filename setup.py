@@ -5,14 +5,15 @@ setup(
     version='1.6',
     description='DAB-chromagen analysis tool',
     longer_description='''
-DAB Analyzer counts the stained area with
+MorphoStain counts the stained area with
 DAB-chromagen using the typical immunohystochemistry protocols.
 After the analysis user can measure the difference of proteins
-content in tested samples.
+content in tested samples. It could also measure areas covered
+with other stains.
 ''',
     maintainer='Ivan Gumenyuk',
     maintainer_email='meklon@gmail.com',
-    url='https://github.com/meklon/DAB_analyzer',
+    url='https://github.com/meklon/morphostain',
     packages=find_packages(exclude=[
         "tests", "tmp", "docs", "data", "test images"]),
     install_requires=[
