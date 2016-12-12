@@ -28,7 +28,7 @@ sudo pip3 install .
 
 Uninstall:
 ```
-sudo pip3 uninstall dabanalyzer
+sudo pip3 uninstall morphostain
 ```
 
 ### Interface type:
@@ -37,9 +37,9 @@ No GUI, command line interface only.
 ### Basic principles:
 Script uses the **color deconvolution method**. It was well described by [G. Landini](http://www.mecourse.com/landinig/software/cdeconv/cdeconv.html). Python port from Skimage package of his algorythm was used. See also: *Ruifrok AC, Johnston DA. Quantification of histochemical staining by color deconvolution. Anal Quant Cytol Histol 23: 291-299, 2001.*
 
-Color deconvolution is used to separate stains in multi-stained sample. This soft is applied for Hematoxyline + DAB staining. Script uses hardcoded stain matrix determined for our lab's dyes. You should determine your own for better result using ImageJ and hyperlink above. Determined custom matrix should replace the default one. For additional information see the comments in code.
+Color deconvolution is used to separate stains in multi-stained sample. This soft is mainly applied for Hematoxyline + DAB staining. Script uses hardcoded stain matrix or custom one in JSON format. You should determine your own for better result using ImageJ and hyperlink above. Determined custom matrix should replace the default one. For additional information see the comments in code.
 
-After DAB separation, script determines the DAB-positive area using the default or user-defined threshold. The empty areas are excluded from the final relative area measurement as the sample could contain free space, which would affect the result accuracy.
+After stain separation, script determines the stain-positive area using the default or user-defined threshold. The empty areas are excluded from the final relative area measurement as the sample could contain free space, which would affect the result accuracy.
 
 Script creates the result folder inside the --path. Statistics, log and composite images for each sample are saved there.
 ### Examples
@@ -59,7 +59,7 @@ How to read box plot:
 #### Log example
 ```
 Images for analysis: 62
-DAB threshold = 40, Empty threshold = 101
+Stain threshold = 40, Empty threshold = 101
 Empty area filtering is disabled.
 It should be adjusted in a case of hollow organ or unavoidable edge defects
 CPU cores used: 2
@@ -74,7 +74,7 @@ Analysis time: 44.3 seconds
 Average time per image: 0.7 seconds
 ```
 #### CSV output example
-Filename | DAB-positive area, %
+Filename | Stain+ area, %
 ------------ | -------------
 Alex_Pan_06.jpg|61.55
 Native_Pan_05.jpg|14.23
@@ -96,7 +96,7 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 
 *-p, --path* (obligate) - path to the target directory with samples
 
-*-t, --thresh* (optional) - threshold for DAB+ area separation. If empty the default value would be used (threshDefault = 30).
+*-t, --thresh* (optional) - threshold for stain+ area separation. If empty the default value would be used (threshDefault = 30).
 
 *-e, --empty* (optional) - threshold for **empty area** separation. If empty the default value would be used (threshEmptyDefault = 101). It is disabled for default and should be used only in a case of hollow organs and unavoidable edge defects.
 
@@ -108,7 +108,7 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 
 ####Example
 ````
-dabanalyzer -p /home/meklon/Data/sample/test/ -t 35 -e 89 -s -a
+morphostain -p /home/meklon/Data/sample/test/ -t 35 -e 89 -s -a
 ````
 
 ### Image samples requirements

@@ -161,55 +161,6 @@ def count_areas(thresh_stain, thresh_empty):
     return area_rel_empty, area_rel_stain
 
 
-def plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty,
-                thresh_default, tresh_empty_default):
-    """
-    Function plots the figure for every sample image. It creates the histogram from the stain array.
-    Then it takes the bins values and clears the plot. That's done because fill_between function doesn't
-    work with histogram but only with ordinary plots. After all function fills the area between zero and
-    plot if the values are above the threshold.
-    """
-    plt.figure(num=None, figsize=(15, 7), dpi=120, facecolor='w', edgecolor='k')
-    plt.subplot(231)
-    plt.title('Original')
-    plt.imshow(image_original)
-
-    plt.subplot(232)
-    plt.title('Stain')
-    plt.imshow(stain, cmap=plt.cm.gray)
-
-    plt.subplot(233)
-    plt.title('Histogram')
-    (n, bins, patches) = plt.hist(stain_1d, bins=128, range=[0, 100], histtype='step', fc='k', ec='#ffffff')
-    # As np.size(bins) = np.size(n)+1, we make the arrays equal to plot the area after threshold
-    bins_equal = np.delete(bins, np.size(bins)-1, axis=0)
-    # clearing subplot after getting the bins from hist
-    plt.cla()
-    plt.fill_between(bins_equal, n, 0, facecolor='#ffffff')
-    plt.fill_between(bins_equal, n, 0, where=bins_equal >= thresh_default,  facecolor='#c4c4f4',
-                     label='positive area')
-    plt.axvline(thresh_default+0.5, color='k', linestyle='--', label='threshold', alpha=0.8)
-    plt.legend(fontsize=8)
-    plt.xlabel("Pixel intensity, %")
-    plt.ylabel("Number of pixels")
-    plt.grid(True, color='#888888')
-
-    plt.subplot(234)
-    plt.title('Lightness channel')
-    plt.imshow(channel_lightness, cmap=plt.cm.gray)
-
-    plt.subplot(235)
-    plt.title('Stain-positive area')
-    plt.imshow(thresh_stain, cmap=plt.cm.gray)
-
-    if not tresh_empty_default>100:
-        plt.subplot(236)
-        plt.title('Empty area')
-        plt.imshow(thresh_empty, cmap=plt.cm.gray)
-
-    plt.tight_layout()
-
-
 def stack_data(array_filenames, array_data):
     """
     Function stacks the data from numpy arrays.
@@ -252,24 +203,6 @@ def check_mkdir_output_path(path_output):
         print("Created result directory")
     else:
         print("Output result directory already exists. All the files inside would be overwritten!")
-
-
-def grayscale_to_stain_color(stain):
-    """
-    Converts grayscale map of stain distribution to the colour representation.
-    The original grayscale is used as a L-channel in HSL colour space.
-    Hue and Saturation channels are defined manually.
-    Disabled now, fix needed.
-    """
-    # todo: Fix the grayscale to colour conversion
-    # Stain colour in HSL
-    array_image_hsl = np.zeros((480, 640, 3), dtype='float')
-    array_image_hsl[..., 0] = 0.0859375  # 25/256 Hue
-    array_image_hsl[..., 1] = 0.34375  # 88/256 Saturation
-    stain = (255 - stain) / 256
-    array_image_hsl[..., 2] = stain  # Lightness
-    image_stain_color = hasel.hsl2rgb(array_image_hsl)
-    return image_stain_color
 
 
 def resize_input_image(image_original, size):
@@ -345,12 +278,61 @@ def group_analyze(filenames, array_data, path_output, dpi):
     data_frame_data = np.hstack((array_file_group, array_data))
 
     df = pd.DataFrame(data_frame_data, columns=column_names)
-    df = df.convert_objects(convert_numeric=True)
+    df = df.apply(pd.to_numeric, errors='ignore')
     groupby_group = df['Stain+ area, %'].groupby(df['Group'])
     data_stats = groupby_group.agg([np.mean, np.std, np.median, np.min, np.max])
     data_stats.to_csv(path_output_stats)
     print(data_stats)
     plot_group(df, path_output, dpi)
+
+
+def plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty,
+                thresh_default, tresh_empty_default):
+    """
+    Function plots the figure for every sample image. It creates the histogram from the stain array.
+    Then it takes the bins values and clears the plot. That's done because fill_between function doesn't
+    work with histogram but only with ordinary plots. After all function fills the area between zero and
+    plot if the values are above the threshold.
+    """
+    plt.figure(num=None, figsize=(15, 7), dpi=150, facecolor='w', edgecolor='k')
+    plt.subplot(231)
+    plt.title('Original')
+    plt.imshow(image_original)
+
+    plt.subplot(232)
+    plt.title('Stain')
+    plt.imshow(stain, cmap=plt.cm.gray)
+
+    plt.subplot(233)
+    plt.title('Histogram')
+    (n, bins, patches) = plt.hist(stain_1d, bins=128, range=[0, 100], histtype='step', fc='k', ec='#ffffff')
+    # As np.size(bins) = np.size(n)+1, we make the arrays equal to plot the area after threshold
+    bins_equal = np.delete(bins, np.size(bins)-1, axis=0)
+    # clearing subplot after getting the bins from hist
+    plt.cla()
+    plt.fill_between(bins_equal, n, 0, facecolor='#ffffff')
+    plt.fill_between(bins_equal, n, 0, where=bins_equal >= thresh_default,  facecolor='#c4c4f4',
+                     label='positive area')
+    plt.axvline(thresh_default+0.5, color='k', linestyle='--', label='threshold', alpha=0.8)
+    plt.legend(fontsize=8)
+    plt.xlabel("Pixel intensity, %")
+    plt.ylabel("Number of pixels")
+    plt.grid(True, color='#888888')
+
+    plt.subplot(234)
+    plt.title('Lightness channel')
+    plt.imshow(channel_lightness, cmap=plt.cm.gray)
+
+    plt.subplot(235)
+    plt.title('Stain-positive area')
+    plt.imshow(thresh_stain, cmap=plt.cm.gray)
+
+    if not tresh_empty_default>100:
+        plt.subplot(236)
+        plt.title('Empty area')
+        plt.imshow(thresh_empty, cmap=plt.cm.gray)
+
+    plt.tight_layout()
 
 
 def plot_group(data_frame, path_output, dpi):
@@ -360,20 +342,19 @@ def plot_group(data_frame, path_output, dpi):
 
     sns.set_style("whitegrid")
     sns.set_context("talk")
-    plt.figure(num=None, figsize=(15, 7), dpi=120)
+    plt.figure(num=None, figsize=(15, 7), dpi=150)
     plt.ylim(0, 100)
-    plt.title('Box plot')
-    sns.boxplot(x="Group", y="Stain-positive area, %", data=data_frame)
-
+    sns.boxplot(x="Group", y="Stain+ area, %", data=data_frame)
     plt.tight_layout()
     plt.savefig(path_output_image, dpi=dpi)
 
 
 def main():
     """
-    Yor own matrix should be placed here. You can use ImageJ and color deconvolution module for it.
+    Yor own matrix should be saved in JSON format. Use --matrix argument.
+    You can use ImageJ and color deconvolution module for it.
     More information here: http://www.mecourse.com/landinig/software/cdeconv/cdeconv.html
-    Declare vectors as a constant
+    Declaring DAB vector as a default
     """
     vectorRawStain = np.array([[0.66504073, 0.61772484, 0.41968665],
                                   [0.4100872, 0.5751321, 0.70785],
