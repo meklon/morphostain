@@ -14,26 +14,13 @@ with other stains.
     maintainer='Ivan Gumenyuk',
     maintainer_email='meklon@gmail.com',
     url='https://github.com/meklon/morphostain',
-    packages=find_packages(exclude=[
-        "tests", "tmp", "docs", "data", "test images"]),
-    install_requires=[
-        'pandas>=0.17.1', 'numpy>=1.11.0', 'scipy',
-        'scikit-image', 'matplotlib', 'seaborn',
-    ],
-    setup_requires=[
-        'pytest-runner',
-    ],
-    tests_require=[
-        'pytest',
-    ],
+    packages=find_packages(),
+    install_requires=['pandas>=0.17.1', 'numpy>=1.11.0', 'scipy',
+        'scikit-image', 'matplotlib', 'seaborn'],
+    setup_requires=['pytest-runner'],
+    include_package_data = True,
+    tests_require=['pytest'],
     license='GPLv3',
-    classifiers=[
-        'Environment :: Console',
-    ],
-    entry_points={
-        'console_scripts': [
-            'morphostain = morphostain:main',
-        ],
-    },
-    package_data={
-    },)
+    classifiers=['Environment :: Console'],
+    entry_points={'console_scripts': ['morphostain = morphostain:main']},
+    )

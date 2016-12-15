@@ -5,6 +5,7 @@ import timeit
 import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
+import pkg_resources
 
 import numpy as np
 from scipy import linalg, misc
@@ -13,7 +14,8 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 
-from . import hasel
+from .import hasel
+from .import resources
 
 # Optional imports of pandas and seaborn are located in functions
 # group_analyze() and plot_group().
@@ -355,10 +357,12 @@ def main():
     You can use ImageJ and color deconvolution module for it.
     More information here: http://www.mecourse.com/landinig/software/cdeconv/cdeconv.html
     Declaring DAB vector as a default
-    """
+
     vectorRawStain = np.array([[0.66504073, 0.61772484, 0.41968665],
                                   [0.4100872, 0.5751321, 0.70785],
                                   [0.6241389, 0.53632, 0.56816506]])
+    """
+
     arrayData = np.empty([0, 1])
     # Pause in seconds between the composite images when --silent(-s) argument is not active
     varPause = 5
@@ -369,10 +373,13 @@ def main():
     # Parse the arguments
     args = parse_arguments()
 
-    if args.matrix:
-        with open(args.matrix) as f:
-            parsedJSON = json.load(f)
-            vectorRawStain = np.array(parsedJSON["vector"])
+    # load resources
+    matrix_json = resources.import_vector()
+    print(matrix_json)
+    parsedJSON = json.loads(matrix_json)
+    vectorRawStain = np.array(parsedJSON["vector"])
+    str_channel_0 = parsedJSON["channel_0"]
+    str_channel_1 = parsedJSON["channel_1"]
 
     pathOutput, pathOutputLog, pathOutputCSV = get_output_paths(args.path)
 
