@@ -5,7 +5,6 @@ import timeit
 import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
-import pkg_resources
 
 import numpy as np
 from scipy import linalg, misc
