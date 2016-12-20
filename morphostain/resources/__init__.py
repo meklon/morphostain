@@ -5,6 +5,6 @@ def import_vector():
                 [0.6241389, 0.53632, 0.56816506]],
       "channel_0": "Hematoxylin",
       "channel_1": "DAB-chromogen",
-      "channel_2": "Supplementary"
+      "channel_2": "Supplementary channel"
     } """
     return json_string

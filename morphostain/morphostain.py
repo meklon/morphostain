@@ -7,6 +7,7 @@ from multiprocessing import Pool, cpu_count
 from functools import partial
 
 import numpy as np
+import pandas as pd
 from scipy import linalg, misc
 from skimage import color
 import matplotlib.image as mpimg
@@ -27,10 +28,12 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", required=True, help="Path to the directory or file")
-    parser.add_argument("-t", "--thresh", required=False, default=40,
-                        type=int, help="Global threshold for stain-positive area,"
-                                       "from 0 to 100.Optimal values are usually"
-                                       " located from 35 to 55.")
+    parser.add_argument("-t0", "--thresh0", required=False, default=30,
+                        type=int, help="Global threshold for stain-positive area of channel_0 stain. "
+                                       "Accepted values from 0 to 100.")
+    parser.add_argument("-t1", "--thresh1", required=False, default=40,
+                        type=int, help="Global threshold for stain-positive area of channel_1 stain. "
+                                       "Accepted values from 0 to 100.")
     parser.add_argument("-e", "--empty", required=False, default=101,
                         type=int, help="Global threshold for EMPTY area,"
                                        "from 0 to 100. Default value is 101,"
@@ -45,7 +48,6 @@ def parse_arguments():
                                                                 " sample01_10.jpg, sample01_11.jpg will be"
                                                                 " counted as a single group 'sample01'",
                                                                 action="store_true")
-    parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
     parser.add_argument("-d", "--dpi", required=False, default=200, type=int, help="Output images DPI. 900 is "
                                                                                    "recommended for printing quality."
                                                                                    " High resolution can significally"
@@ -80,27 +82,31 @@ def separate_channels(image_original, matrix_dh):
     """
 
     image_separated = color.separate_stains(image_original, matrix_dh)
-    stain = image_separated[..., 1]
-    # Hematox channel separation is disabled, it could be switched on if image with both stains is needed.
-    # one of plot_figure() subplots should be replaced with stainHematox
+    stain_ch0 = image_separated[..., 0]
+    stain_ch1 = image_separated[..., 1]
+    stain_ch2 = image_separated[..., 2]
 
-    # stainHematox = image_separated[..., 0]
-
-    # 1-D array for histogram conversion, 1 was added to move the original range from
-    # [-1,0] to [0,1] as black and white respectively. Warning! Magic numbers.
-    # Anyway it's not a trouble for correct thresholding. Only for histogram aspect.
-    stain = (stain + 1) * 200
-    # Histogram shift. This correcion makes the background really blank. After the correction
+    # todo: move pre-contrast settings to json external file. Optimized values should be imported with stain matrix
+    stain_ch0 = (stain_ch0 + 1) * 200
+    # Histogram shift. This correction makes the background really blank. After the correction
+    stain_ch0 -= 5
     # numpy clipping is performed to fit the 0-100 range
-    stain -= 18
-    stain = np.clip(stain, 0, 100)
-    stain_1d = np.ravel(stain)
+    stain_ch0 = np.clip(stain_ch0, 0, 100)
+
+    stain_ch1 = (stain_ch1 + 1) * 200
+    stain_ch1 -= 18
+    stain_ch1 = np.clip(stain_ch1, 0, 100)
+
+    stain_ch2 = (stain_ch2 + 1) * 200
+    stain_ch2 -= 0
+    stain_ch2 = np.clip(stain_ch2, 0, 100)
+
     # Extracting Lightness channel from HSL of original image
     # L-channel is multiplied to 100 to get the range 0-100 % from 0-1. It's easier to use with
     # empty area threshold
     image_hsl = hasel.rgb2hsl(image_original)
     channel_lightness = (image_hsl[..., 2] * 100)
-    return stain, stain_1d, channel_lightness
+    return stain_ch0, stain_ch1, stain_ch2, channel_lightness
 
 
 def log_and_console(path_output_log, text_log, bool_log_new=False):
@@ -133,15 +139,14 @@ def log_only(path_output_log, text_log):
             fileLog.write('\n')
 
 
-def count_thresholds(stain, channel_lightness, thresh_default, thresh_empty_default):
+def count_thresholds(stain, channel_lightness, thresh_channel, thresh_empty_default):
     """
     Counts thresholds. "stain" is a distribution map of stain, channel_lightness is a L channel from
     original image in HSL color space. The output are the thresholded images of stain-positive areas and
-    empty areas. thresh_default is also in output as plot_figure() needs it to make a vertical line of
-    threshold on a histogram.
+    empty areas.
     """
 
-    thresh_stain = stain > thresh_default
+    thresh_stain = stain > thresh_channel
     thresh_empty = channel_lightness > thresh_empty_default
     return thresh_stain, thresh_empty
 
@@ -162,24 +167,29 @@ def count_areas(thresh_stain, thresh_empty):
     return area_rel_empty, area_rel_stain
 
 
-def stack_data(array_filenames, array_data):
+def stack_data(list_filenames, list_data):
     """
-    Function stacks the data from numpy arrays.
+    Function stacks the data from data lists.
     """
-    array_output = np.hstack((array_filenames, array_data))
-    array_output = np.vstack((["Filename", "Stain-positive area, %"], array_output))
-    return array_output
+    matrix_json = resources.import_vector()
+    parsedJSON = json.loads(matrix_json)
+    str_ch0 = parsedJSON["channel_0"]
+    str_ch1 = parsedJSON["channel_1"]
+    str_col0 = str_ch0 + "-positive area, %"
+    str_col1 = str_ch1 + "-positive area, %"
+    pandas_df = pd.DataFrame(data = list_data, columns=[str_col0, str_col1], index = list_filenames)
+    return pandas_df
 
 
-def save_csv(path_output_csv, array_filenames, array_data):
+def save_csv(path_output_csv, array_filenames, list_data):
     """
     Function puts data array to the output csv file.
     """
-    array_output = stack_data(array_filenames, array_data)
+    data_output = stack_data(array_filenames, list_data)
+    print(data_output)
 
     # write array to csv file
-    with open(path_output_csv, 'w') as f:
-        csv.writer(f).writerows(array_output)
+    data_output.to_csv(path_output_csv)
     print("CSV saved: " + path_output_csv)
 
 
@@ -216,7 +226,8 @@ def resize_input_image(image_original, size):
     return image_original
 
 
-def image_process(array_data, var_pause, matrix_dh, args, pathOutput, pathOutputLog, filename):
+def image_process(var_pause, matrix_stains, args, pathOutput, pathOutputLog, str_ch0, str_ch1, str_ch2,
+                  filename):
     """
     Main cycle, split into several processes using the Pool(). All images pass through this
     function. The result of this function is composite images, saved in the target directory,
@@ -230,19 +241,23 @@ def image_process(array_data, var_pause, matrix_dh, args, pathOutput, pathOutput
     size_image = 480, 640
     image_original = resize_input_image(image_original, size_image)
 
-    stain, stain_1d, channel_lightness = separate_channels(image_original, matrix_dh)
-    thresh_stain, thresh_empty = count_thresholds(stain, channel_lightness, args.thresh, args.empty)
-    area_rel_empty, area_rel_stain = count_areas(thresh_stain, thresh_empty)
-    # stain = grayscale_to_stain_color(stain)
+    stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains)
+
+    thresh_stain_ch0, thresh_empty = count_thresholds(stain_ch0, channel_lightness, args.thresh0, args.empty)
+    area_rel_empty, area_rel_stain_ch0 = count_areas(thresh_stain_ch0, thresh_empty)
+
+    thresh_stain_ch1, thresh_empty = count_thresholds(stain_ch1, channel_lightness, args.thresh1, args.empty)
+    area_rel_empty, area_rel_stain_ch1 = count_areas(thresh_stain_ch1, thresh_empty)
 
     # Close all figures after cycle end
     plt.close('all')
 
-    array_data = np.vstack((array_data, area_rel_stain))
+    list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
+
 
     # Creating the complex image
-    plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty, args.thresh,
-                args.empty)
+    plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
+                str_ch0, str_ch1, str_ch2)
     plt.savefig(path_output_image, dpi=args.dpi)
 
     log_and_console(pathOutputLog, "Image saved: {}".format(path_output_image))
@@ -250,7 +265,8 @@ def image_process(array_data, var_pause, matrix_dh, args, pathOutput, pathOutput
     # In silent mode image will be closed immediately
     if not args.silent:
         plt.pause(var_pause)
-    return array_data
+
+    return list_rel_area
 
 
 def group_filenames(filenames):
@@ -267,9 +283,6 @@ def group_filenames(filenames):
 
 
 def group_analyze(filenames, array_data, path_output, dpi):
-    # optional import
-    import pandas as pd
-
     path_output_stats = os.path.join(path_output, "stats.csv")
     # Creating groups of samples using the filename
     array_file_group = group_filenames(filenames)
@@ -287,51 +300,38 @@ def group_analyze(filenames, array_data, path_output, dpi):
     plot_group(df, path_output, dpi)
 
 
-def plot_figure(image_original, stain, stain_1d, channel_lightness, thresh_stain, thresh_empty,
-                thresh_default, tresh_empty_default):
+def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
+                str_ch0, str_ch1, str_ch2):
     """
     Function plots the figure for every sample image. It creates the histogram from the stain array.
     Then it takes the bins values and clears the plot. That's done because fill_between function doesn't
     work with histogram but only with ordinary plots. After all function fills the area between zero and
     plot if the values are above the threshold.
     """
-    plt.figure(num=None, figsize=(15, 7), dpi=150, facecolor='w', edgecolor='k')
+    plt.figure(num=None, figsize=(14, 7), dpi=150, facecolor='w', edgecolor='k')
     plt.subplot(231)
     plt.title('Original')
     plt.imshow(image_original)
 
     plt.subplot(232)
-    plt.title('Stain')
-    plt.imshow(stain, cmap=plt.cm.gray)
+    plt.title(str_ch0)
+    plt.imshow(stain_ch0, cmap=plt.cm.gray)
 
     plt.subplot(233)
-    plt.title('Histogram')
-    (n, bins, patches) = plt.hist(stain_1d, bins=128, range=[0, 100], histtype='step', fc='k', ec='#ffffff')
-    # As np.size(bins) = np.size(n)+1, we make the arrays equal to plot the area after threshold
-    bins_equal = np.delete(bins, np.size(bins)-1, axis=0)
-    # clearing subplot after getting the bins from hist
-    plt.cla()
-    plt.fill_between(bins_equal, n, 0, facecolor='#ffffff')
-    plt.fill_between(bins_equal, n, 0, where=bins_equal >= thresh_default,  facecolor='#c4c4f4',
-                     label='positive area')
-    plt.axvline(thresh_default+0.5, color='k', linestyle='--', label='threshold', alpha=0.8)
-    plt.legend(fontsize=8)
-    plt.xlabel("Pixel intensity, %")
-    plt.ylabel("Number of pixels")
-    plt.grid(True, color='#888888')
+    plt.title(str_ch1)
+    plt.imshow(stain_ch1, cmap=plt.cm.gray)
 
     plt.subplot(234)
-    plt.title('Lightness channel')
-    plt.imshow(channel_lightness, cmap=plt.cm.gray)
+    plt.title(str_ch2)
+    plt.imshow(stain_ch2, cmap=plt.cm.gray)
 
     plt.subplot(235)
-    plt.title('Stain-positive area')
-    plt.imshow(thresh_stain, cmap=plt.cm.gray)
+    plt.title(str_ch0 + '-positive area')
+    plt.imshow(thresh_stain_ch0, cmap=plt.cm.gray)
 
-    if not tresh_empty_default>100:
-        plt.subplot(236)
-        plt.title('Empty area')
-        plt.imshow(thresh_empty, cmap=plt.cm.gray)
+    plt.subplot(236)
+    plt.title(str_ch1 + '-positive area')
+    plt.imshow(thresh_stain_ch1, cmap=plt.cm.gray)
 
     plt.tight_layout()
 
@@ -352,44 +352,38 @@ def plot_group(data_frame, path_output, dpi):
 
 def main():
     """
-    Yor own matrix should be saved in JSON format. Use --matrix argument.
-    You can use ImageJ and color deconvolution module for it.
-    More information here: http://www.mecourse.com/landinig/software/cdeconv/cdeconv.html
-    Declaring DAB vector as a default
-
-    vectorRawStain = np.array([[0.66504073, 0.61772484, 0.41968665],
-                                  [0.4100872, 0.5751321, 0.70785],
-                                  [0.6241389, 0.53632, 0.56816506]])
     """
 
-    arrayData = np.empty([0, 1])
+    listData = []
+
     # Pause in seconds between the composite images when --silent(-s) argument is not active
     varPause = 5
-
     # Initialize the global timer
     startTimeGlobal = timeit.default_timer()
-
     # Parse the arguments
     args = parse_arguments()
 
-    # load resources
+    # load internal resources in json format
+    # todo: create the easy selection of stain type from json, add other stains
+    # todo: add optimal parameters in json (thresholds and others)
     matrix_json = resources.import_vector()
-    print(matrix_json)
     parsedJSON = json.loads(matrix_json)
     vectorRawStain = np.array(parsedJSON["vector"])
-    str_channel_0 = parsedJSON["channel_0"]
-    str_channel_1 = parsedJSON["channel_1"]
+    str_ch0 = parsedJSON["channel_0"]
+    str_ch1 = parsedJSON["channel_1"]
+    str_ch2 = parsedJSON["channel_2"]
 
     pathOutput, pathOutputLog, pathOutputCSV = get_output_paths(args.path)
 
     check_mkdir_output_path(pathOutput)
     filenames = get_image_filenames(args.path)
     log_and_console(pathOutputLog, "Images for analysis: " + str(len(filenames)), True)
-    log_and_console(pathOutputLog, "Stain threshold = " + str(args.thresh) +
+    log_and_console(pathOutputLog, str_ch0 + " threshold = " + str(args.thresh0) +
+                    ", " + str_ch1 + " threshold = " + str(args.thresh1) +
                     ", Empty threshold = " + str(args.empty))
     if args.empty>100:
         log_and_console(pathOutputLog, "Empty area filtering is disabled.")
-        log_and_console(pathOutputLog, "It should be adjusted in a case of hollow organ or unavoidable edge defects")
+        #log_and_console(pathOutputLog, "It should be adjusted in a case of hollow organ or unavoidable edge defects")
 
     # Calculate the stain deconvolution matrix
     matrixStains = calc_deconv_matrix(vectorRawStain)
@@ -401,19 +395,19 @@ def main():
     # Main cycle where the images are processed and the data is obtained
     pool = Pool(cores)
 
-    wrapper_image_process = partial(image_process, arrayData, varPause, matrixStains,
-                                    args, pathOutput, pathOutputLog)
+    wrapper_image_process = partial(image_process, varPause, matrixStains,
+                                    args, pathOutput, pathOutputLog, str_ch0, str_ch1, str_ch2)
     for poolResult in pool.imap(wrapper_image_process, filenames):
-        arrayData = np.append(arrayData, poolResult, axis=0)
+        listData.append(poolResult)
     pool.close()
     pool.join()
 
-    arrayFilenames = np.empty([0, 1])
+    listFilenames = []
     for filename in filenames:
-        arrayFilenames = np.vstack((arrayFilenames, filename))
+        listFilenames.append(filename)
 
     # Creating summary csv after main cycle end
-    save_csv(pathOutputCSV, arrayFilenames, arrayData)
+    save_csv(pathOutputCSV, listFilenames, listData)
 
     # Optional statistical group analysis.
     if args.analyze:
