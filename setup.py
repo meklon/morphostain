@@ -16,7 +16,7 @@ with other stains.
     url='https://github.com/meklon/morphostain',
     packages=find_packages(),
     install_requires=['pandas>=0.17.1', 'numpy>=1.11.0', 'scipy',
-        'scikit-image', 'matplotlib', 'seaborn'],
+        'scikit-image', 'matplotlib', 'seaborn', 'openpyxl'],
     setup_requires=['pytest-runner'],
     include_package_data = True,
     tests_require=['pytest'],
