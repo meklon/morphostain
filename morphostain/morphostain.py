@@ -172,16 +172,16 @@ def stack_data(list_filenames, list_data):
     Function stacks the data from data lists.
     """
     matrix_json = resources.import_vector()
-    parsedJSON = json.loads(matrix_json)
-    str_ch0 = parsedJSON["channel_0"]
-    str_ch1 = parsedJSON["channel_1"]
+    parsed_json = json.loads(matrix_json)
+    str_ch0 = parsed_json["channel_0"]
+    str_ch1 = parsed_json["channel_1"]
     str_col0 = str_ch0 + "-positive area, %"
     str_col1 = str_ch1 + "-positive area, %"
-    pandas_df = pd.DataFrame(data = list_data, columns=[str_col0, str_col1], index = list_filenames)
+    pandas_df = pd.DataFrame(data=list_data, columns=[str_col0, str_col1], index=list_filenames)
     return pandas_df
 
 
-def save_csv(path_output_csv, array_filenames, list_data):
+def save_data(path_output_csv, path_output_xlsx, array_filenames, list_data):
     """
     Function puts data array to the output csv file.
     """
@@ -190,7 +190,7 @@ def save_csv(path_output_csv, array_filenames, list_data):
 
     # write array to csv file
     data_output.to_csv(path_output_csv)
-    print("CSV saved: " + path_output_csv)
+    data_output.to_excel(path_output_xlsx)
 
 
 def get_output_paths(path_root):
@@ -201,7 +201,8 @@ def get_output_paths(path_root):
     path_output = os.path.join(path_root, "result/")
     path_output_log = os.path.join(path_output, "log.txt")
     path_output_csv = os.path.join(path_output, "analysis.csv")
-    return path_output, path_output_log, path_output_csv
+    path_output_xlsx = os.path.join(path_output, "analysis.xlsx")
+    return path_output, path_output_log, path_output_csv, path_output_xlsx
 
 
 def check_mkdir_output_path(path_output):
@@ -226,7 +227,7 @@ def resize_input_image(image_original, size):
     return image_original
 
 
-def image_process(var_pause, matrix_stains, args, pathOutput, pathOutputLog, str_ch0, str_ch1, str_ch2,
+def image_process(var_pause, matrix_stains, args, path_output, pathOutputLog, str_ch0, str_ch1, str_ch2,
                   filename):
     """
     Main cycle, split into several processes using the Pool(). All images pass through this
@@ -235,7 +236,7 @@ def image_process(var_pause, matrix_stains, args, pathOutput, pathOutputLog, str
     """
 
     path_input_image = os.path.join(args.path, filename)
-    path_output_image = os.path.join(pathOutput, filename.split(".")[0] + "_analysis.png")
+    path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
     image_original = mpimg.imread(path_input_image)
 
     size_image = 480, 640
@@ -253,7 +254,6 @@ def image_process(var_pause, matrix_stains, args, pathOutput, pathOutputLog, str
     plt.close('all')
 
     list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
-
 
     # Creating the complex image
     plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
@@ -353,13 +353,12 @@ def plot_group(data_frame, path_output, dpi):
 def main():
     """
     """
-
-    listData = []
+    list_data = []
 
     # Pause in seconds between the composite images when --silent(-s) argument is not active
-    varPause = 5
+    var_pause = 5
     # Initialize the global timer
-    startTimeGlobal = timeit.default_timer()
+    start_time_global = timeit.default_timer()
     # Parse the arguments
     args = parse_arguments()
 
@@ -367,60 +366,59 @@ def main():
     # todo: create the easy selection of stain type from json, add other stains
     # todo: add optimal parameters in json (thresholds and others)
     matrix_json = resources.import_vector()
-    parsedJSON = json.loads(matrix_json)
-    vectorRawStain = np.array(parsedJSON["vector"])
-    str_ch0 = parsedJSON["channel_0"]
-    str_ch1 = parsedJSON["channel_1"]
-    str_ch2 = parsedJSON["channel_2"]
+    parsed_json = json.loads(matrix_json)
+    vector_raw_stain = np.array(parsed_json["vector"])
+    str_ch0 = parsed_json["channel_0"]
+    str_ch1 = parsed_json["channel_1"]
+    str_ch2 = parsed_json["channel_2"]
 
-    pathOutput, pathOutputLog, pathOutputCSV = get_output_paths(args.path)
+    path_output, path_output_log, path_output_csv, path_output_xlsx = get_output_paths(args.path)
 
-    check_mkdir_output_path(pathOutput)
+    check_mkdir_output_path(path_output)
     filenames = get_image_filenames(args.path)
-    log_and_console(pathOutputLog, "Images for analysis: " + str(len(filenames)), True)
-    log_and_console(pathOutputLog, str_ch0 + " threshold = " + str(args.thresh0) +
+    log_and_console(path_output_log, "Images for analysis: " + str(len(filenames)), True)
+    log_and_console(path_output_log, str_ch0 + " threshold = " + str(args.thresh0) +
                     ", " + str_ch1 + " threshold = " + str(args.thresh1) +
                     ", Empty threshold = " + str(args.empty))
-    if args.empty>100:
-        log_and_console(pathOutputLog, "Empty area filtering is disabled.")
-        #log_and_console(pathOutputLog, "It should be adjusted in a case of hollow organ or unavoidable edge defects")
+    if args.empty > 100:
+        log_and_console(path_output_log, "Empty area filtering is disabled.")
 
     # Calculate the stain deconvolution matrix
-    matrixStains = calc_deconv_matrix(vectorRawStain)
+    matrix_stains = calc_deconv_matrix(vector_raw_stain)
 
     # Multiprocess implementation
     cores = cpu_count()
-    log_and_console(pathOutputLog, "CPU cores used: {}".format(cores))
+    log_and_console(path_output_log, "CPU cores used: {}".format(cores))
 
     # Main cycle where the images are processed and the data is obtained
     pool = Pool(cores)
 
-    wrapper_image_process = partial(image_process, varPause, matrixStains,
-                                    args, pathOutput, pathOutputLog, str_ch0, str_ch1, str_ch2)
+    wrapper_image_process = partial(image_process, var_pause, matrix_stains,
+                                    args, path_output, path_output_log, str_ch0, str_ch1, str_ch2)
     for poolResult in pool.imap(wrapper_image_process, filenames):
-        listData.append(poolResult)
+        list_data.append(poolResult)
     pool.close()
     pool.join()
 
-    listFilenames = []
+    list_filenames = []
     for filename in filenames:
-        listFilenames.append(filename)
+        list_filenames.append(filename)
 
     # Creating summary csv after main cycle end
-    save_csv(pathOutputCSV, listFilenames, listData)
+    save_data(path_output_csv, path_output_xlsx, list_filenames, list_data)
 
     # Optional statistical group analysis.
     if args.analyze:
-        log_and_console(pathOutputLog,"Group analysis is active")
-        group_analyze(filenames, arrayData, pathOutput, args.dpi)
-        log_and_console(pathOutputLog,"Statistical data for each group was saved as stats.csv")
-        log_and_console(pathOutputLog,"Boxplot with statistics was saved as summary_statistics.png")
+        log_and_console(path_output_log,"Group analysis is active")
+        group_analyze(filenames, list_data, path_output, args.dpi)
+        log_and_console(path_output_log,"Statistical data for each group was saved as stats.csv")
+        log_and_console(path_output_log,"Boxplot with statistics was saved as summary_statistics.png")
 
     # End of the global timer
-    elapsedGlobal = timeit.default_timer() - startTimeGlobal
+    elapsed_global = timeit.default_timer() - start_time_global
     if not args.silent:
-        averageImageTime = (elapsedGlobal - len(filenames)*varPause)/len(filenames)  # compensate the pause
+        averageImageTime = (elapsed_global - len(filenames)*var_pause)/len(filenames)  # compensate the pause
     else:
-        averageImageTime = elapsedGlobal/len(filenames)
-    log_and_console(pathOutputLog, "Analysis time: {:.1f} seconds".format(elapsedGlobal))
-    log_and_console(pathOutputLog, "Average time per image: {:.1f} seconds".format(averageImageTime))
+        averageImageTime = elapsed_global/len(filenames)
+    log_and_console(path_output_log, "Analysis time: {:.1f} seconds".format(elapsed_global))
+    log_and_console(path_output_log, "Average time per image: {:.1f} seconds".format(averageImageTime))
