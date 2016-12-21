@@ -28,10 +28,10 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", required=True, help="Path to the directory or file")
-    parser.add_argument("-t0", "--thresh0", required=False, default=30,
+    parser.add_argument("-t0", "--thresh0", required=False,
                         type=int, help="Global threshold for stain-positive area of channel_0 stain. "
                                        "Accepted values from 0 to 100.")
-    parser.add_argument("-t1", "--thresh1", required=False, default=40,
+    parser.add_argument("-t1", "--thresh1", required=False,
                         type=int, help="Global threshold for stain-positive area of channel_1 stain. "
                                        "Accepted values from 0 to 100.")
     parser.add_argument("-e", "--empty", required=False, default=101,
@@ -80,25 +80,28 @@ def separate_channels(image_original, matrix_dh):
     """
     Separate the stains using the custom matrix
     """
+    parsed_json = json_parse()
+    # Histogram shift. This correction makes the background really blank. After the correction
+    # numpy clipping is performed to fit the 0-100 range
+    hist_shift_0 = parsed_json["hist_shift_0"]
+    hist_shift_1 = parsed_json["hist_shift_1"]
+    hist_shift_2 = parsed_json["hist_shift_2"]
 
     image_separated = color.separate_stains(image_original, matrix_dh)
     stain_ch0 = image_separated[..., 0]
     stain_ch1 = image_separated[..., 1]
     stain_ch2 = image_separated[..., 2]
 
-    # todo: move pre-contrast settings to json external file. Optimized values should be imported with stain matrix
     stain_ch0 = (stain_ch0 + 1) * 200
-    # Histogram shift. This correction makes the background really blank. After the correction
-    stain_ch0 -= 5
-    # numpy clipping is performed to fit the 0-100 range
+    stain_ch0 -= hist_shift_0
     stain_ch0 = np.clip(stain_ch0, 0, 100)
 
     stain_ch1 = (stain_ch1 + 1) * 200
-    stain_ch1 -= 18
+    stain_ch1 -= hist_shift_1
     stain_ch1 = np.clip(stain_ch1, 0, 100)
 
     stain_ch2 = (stain_ch2 + 1) * 200
-    stain_ch2 -= 0
+    stain_ch2 -= hist_shift_2
     stain_ch2 = np.clip(stain_ch2, 0, 100)
 
     # Extracting Lightness channel from HSL of original image
@@ -231,7 +234,11 @@ def image_process(var_pause, matrix_stains, args, path_output, pathOutputLog, st
     Main cycle, split into several processes using the Pool(). All images pass through this
     function. The result of this function is composite images, saved in the target directory,
     log output and array_data - numpy array, containing the data obtained.
+    Optimized thresholds are loaded from json with stain parameters
     """
+    parsed_json = json_parse()
+    thresh_0 = parsed_json["thresh_0"]
+    thresh_1 = parsed_json["thresh_1"]
 
     path_input_image = os.path.join(args.path, filename)
     path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
@@ -242,10 +249,10 @@ def image_process(var_pause, matrix_stains, args, path_output, pathOutputLog, st
 
     stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains)
 
-    thresh_stain_ch0, thresh_empty = count_thresholds(stain_ch0, channel_lightness, args.thresh0, args.empty)
+    thresh_stain_ch0, thresh_empty = count_thresholds(stain_ch0, channel_lightness, thresh_0, args.empty)
     area_rel_empty, area_rel_stain_ch0 = count_areas(thresh_stain_ch0, thresh_empty)
 
-    thresh_stain_ch1, thresh_empty = count_thresholds(stain_ch1, channel_lightness, args.thresh1, args.empty)
+    thresh_stain_ch1, thresh_empty = count_thresholds(stain_ch1, channel_lightness, thresh_1, args.empty)
     area_rel_empty, area_rel_stain_ch1 = count_areas(thresh_stain_ch1, thresh_empty)
 
     # Close all figures after cycle end
@@ -386,8 +393,6 @@ def main():
 
     # load internal resources in json format
     # todo: create the easy selection of stain type from json, add other stains
-    # todo: add optimal parameters in json (thresholds and others)
-
     parsed_json = json_parse()
 
     vector_raw_stain = np.array(parsed_json["vector"])

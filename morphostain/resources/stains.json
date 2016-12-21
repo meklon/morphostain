@@ -4,5 +4,10 @@
             [0.6241389, 0.53632, 0.56816506]],
   "channel_0":"Hematoxylin",
   "channel_1":"DAB-chromogen",
-  "channel_2":"Supplementary channel"
+  "channel_2":"Supplementary channel",
+  "thresh_0":30,
+  "thresh_1":40,
+  "hist_shift_0":5,
+  "hist_shift_1":18,
+  "hist_shift_2":0
 }
