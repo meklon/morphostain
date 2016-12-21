@@ -4,6 +4,7 @@ import timeit
 import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
+from pkg_resources import resource_filename
 
 import numpy as np
 import pandas as pd
@@ -170,8 +171,7 @@ def stack_data(list_filenames, list_data):
     """
     Function stacks the data from data lists.
     """
-    matrix_json = resources.import_vector()
-    parsed_json = json.loads(matrix_json)
+    parsed_json = json_parse()
     str_ch0 = parsed_json["channel_0"]
     str_ch1 = parsed_json["channel_1"]
     str_col0 = str_ch0 + "-positive area, %"
@@ -181,7 +181,7 @@ def stack_data(list_filenames, list_data):
     return pandas_df
 
 
-def save_data(path_output_csv, path_output_xlsx, array_filenames, list_data):
+def save_data(path_output_csv, array_filenames, list_data):
     """
     Function puts data array to the output csv file.
     """
@@ -200,8 +200,7 @@ def get_output_paths(path_root):
     path_output = os.path.join(path_root, "result/")
     path_output_log = os.path.join(path_output, "log.txt")
     path_output_csv = os.path.join(path_output, "analysis.csv")
-    path_output_xlsx = os.path.join(path_output, "analysis.xlsx")
-    return path_output, path_output_log, path_output_csv, path_output_xlsx
+    return path_output, path_output_log, path_output_csv
 
 
 def check_mkdir_output_path(path_output):
@@ -366,6 +365,13 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi):
     plt.savefig(path_output_image, dpi=dpi)
 
 
+def json_parse():
+    json_path = resource_filename(__name__, 'resources/stains.json')
+    json_data = open(json_path)
+    parsed_json = json.load(json_data)
+    return parsed_json
+
+
 def main():
     """
     """
@@ -381,14 +387,15 @@ def main():
     # load internal resources in json format
     # todo: create the easy selection of stain type from json, add other stains
     # todo: add optimal parameters in json (thresholds and others)
-    matrix_json = resources.import_vector()
-    parsed_json = json.loads(matrix_json)
+
+    parsed_json = json_parse()
+
     vector_raw_stain = np.array(parsed_json["vector"])
     str_ch0 = parsed_json["channel_0"]
     str_ch1 = parsed_json["channel_1"]
     str_ch2 = parsed_json["channel_2"]
 
-    path_output, path_output_log, path_output_csv, path_output_xlsx = get_output_paths(args.path)
+    path_output, path_output_log, path_output_csv = get_output_paths(args.path)
 
     check_mkdir_output_path(path_output)
     filenames = get_image_filenames(args.path)
@@ -421,7 +428,7 @@ def main():
         list_filenames.append(filename)
 
     # Creating summary csv after main cycle end
-    save_data(path_output_csv, path_output_xlsx, list_filenames, list_data)
+    save_data(path_output_csv, list_filenames, list_data)
 
     # Optional statistical group analysis.
     if args.analyze:

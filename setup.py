@@ -22,5 +22,8 @@ with other stains.
     tests_require=['pytest'],
     license='GPLv3',
     classifiers=['Environment :: Console'],
+    package_data={
+        'morphostain': ['resources/*'],
+    },
     entry_points={'console_scripts': ['morphostain = morphostain:main']},
     )
