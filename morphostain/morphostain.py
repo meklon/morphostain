@@ -1,6 +1,5 @@
 import argparse
 import os
-import csv
 import timeit
 import json
 from multiprocessing import Pool, cpu_count
@@ -178,6 +177,7 @@ def stack_data(list_filenames, list_data):
     str_col0 = str_ch0 + "-positive area, %"
     str_col1 = str_ch1 + "-positive area, %"
     pandas_df = pd.DataFrame(data=list_data, columns=[str_col0, str_col1], index=list_filenames)
+    pandas_df.index.name = 'Filename'
     return pandas_df
 
 
@@ -190,7 +190,6 @@ def save_data(path_output_csv, path_output_xlsx, array_filenames, list_data):
 
     # write array to csv file
     data_output.to_csv(path_output_csv)
-    data_output.to_excel(path_output_xlsx)
 
 
 def get_output_paths(path_root):
@@ -275,29 +274,46 @@ def group_filenames(filenames):
      statistics for each sample group.
     """
 
-    array_file_group = np.empty([0, 1])
+    list_file_group = []
     for filename in filenames:
         filename = filename.split("_")[0]
-        array_file_group = np.vstack((array_file_group, filename))
-    return array_file_group
+        list_file_group.append(filename)
+    return list_file_group
 
 
-def group_analyze(filenames, array_data, path_output, dpi):
-    path_output_stats = os.path.join(path_output, "stats.csv")
+def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
+    """
+    Statistical group analysis. Output is csv file with results, and group plot
+    function.
+    """
+
     # Creating groups of samples using the filename
-    array_file_group = group_filenames(filenames)
+    list_file_group = group_filenames(filenames)
+
+    str_col0 = str_ch0 + "-positive area, %"
+    str_col1 = str_ch1 + "-positive area, %"
 
     # Creating pandas DataFrame
-    column_names = ['Group', 'Stain+ area, %']
-    data_frame_data = np.hstack((array_file_group, array_data))
-
-    df = pd.DataFrame(data_frame_data, columns=column_names)
+    column_names = [str_col0, str_col1]
+    df = pd.DataFrame(list_data, columns=column_names, index=list_file_group)
+    df.index.name = 'Group'
     df = df.apply(pd.to_numeric, errors='ignore')
-    groupby_group = df['Stain+ area, %'].groupby(df['Group'])
-    data_stats = groupby_group.agg([np.mean, np.std, np.median, np.min, np.max])
+
+    #Channel_0 stats
+    groupby_ch0 = df[str_col0].groupby(df.index)
+    data_stats = groupby_ch0.agg([np.mean, np.std, np.median, np.min, np.max])
+    path_output_stats = os.path.join(path_output, "group_stats_" + str_ch0 + ".csv")
     data_stats.to_csv(path_output_stats)
     print(data_stats)
-    plot_group(df, path_output, dpi)
+    plot_group(df, path_output, str_ch0, str_col0, dpi)
+
+    # Channel_1 stats
+    groupby_ch1 = df[str_col1].groupby(df.index)
+    data_stats = groupby_ch1.agg([np.mean, np.std, np.median, np.min, np.max])
+    path_output_stats = os.path.join(path_output, "group_stats_" + str_ch1 + ".csv")
+    data_stats.to_csv(path_output_stats)
+    print(data_stats)
+    plot_group(df, path_output, str_ch1, str_col1, dpi)
 
 
 def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
@@ -336,16 +352,16 @@ def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightne
     plt.tight_layout()
 
 
-def plot_group(data_frame, path_output, dpi):
+def plot_group(data_frame, path_output, str_ch, str_col, dpi):
     # optional import
     import seaborn as sns
-    path_output_image = os.path.join(path_output, "summary_statistics.png")
-
+    path_output_image = os.path.join(path_output, "group_stats_" + str_ch + ".png")
+    print(data_frame)
     sns.set_style("whitegrid")
     sns.set_context("talk")
     plt.figure(num=None, figsize=(15, 7), dpi=150)
     plt.ylim(0, 100)
-    sns.boxplot(x="Group", y="Stain+ area, %", data=data_frame)
+    sns.boxplot(x=data_frame.index, y=str_col, data=data_frame)
     plt.tight_layout()
     plt.savefig(path_output_image, dpi=dpi)
 
@@ -409,16 +425,14 @@ def main():
 
     # Optional statistical group analysis.
     if args.analyze:
-        log_and_console(path_output_log,"Group analysis is active")
-        group_analyze(filenames, list_data, path_output, args.dpi)
-        log_and_console(path_output_log,"Statistical data for each group was saved as stats.csv")
-        log_and_console(path_output_log,"Boxplot with statistics was saved as summary_statistics.png")
+        log_and_console(path_output_log, "Group analysis is active")
+        group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args.dpi)
 
     # End of the global timer
     elapsed_global = timeit.default_timer() - start_time_global
     if not args.silent:
-        averageImageTime = (elapsed_global - len(filenames)*var_pause)/len(filenames)  # compensate the pause
+        average_image_time = (elapsed_global - len(filenames)*var_pause)/len(filenames)  # compensate the pause
     else:
-        averageImageTime = elapsed_global/len(filenames)
+        average_image_time = elapsed_global/len(filenames)
     log_and_console(path_output_log, "Analysis time: {:.1f} seconds".format(elapsed_global))
-    log_and_console(path_output_log, "Average time per image: {:.1f} seconds".format(averageImageTime))
+    log_and_console(path_output_log, "Average time per image: {:.1f} seconds".format(average_image_time))
