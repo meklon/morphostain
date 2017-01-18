@@ -2,21 +2,21 @@
 Python soft for morphometric stain analysis. Software counts the stained area with determined stain (DAB-chromagen for example) using the typical immunohistochemistry protocols. After the analysis user can measure the difference of proteins content in tested samples.
 
 ### Contents:
-1. [Application](#Application)
-2. [Requirements](#Requirements)
-3. [Installation](#Installation)
-4. [Basic principles](#Basic-principles)
-5. [Image samples requirements](#Image-samples-requirements)
-6. [Interface type](#Interface-type)
-7. [Composite image examples](#Composite-image-examples)
-8. [Summary statistics](#Summary-statistics-image-example)
-9. [Log](#Log-example)
-10. [CSV output](#CSV-output-example)
-11. [Statistical data output](#Statistical-data-output-example)
-12. [Command line arguments](#Command-line-arguments)
-13. [Typical options usage](#Typical-options-usage)
-14. [Authorship](#Authorship)
-15. [Acknowledgements](#Acknowledgements)
+1. [Application](#application)
+2. [Requirements](#requirements)
+3. [Installation](#installation)
+4. [Basic principles](#basic-principles)
+5. [Image samples requirements](#image-samples-requirements)
+6. [Interface type](#interface-type)
+7. [Composite image examples](#composite-image-examples)
+8. [Summary statistics](#summary-statistics-image-example)
+9. [Log](#log-example)
+10. [CSV output](#csv-output-example)
+11. [Statistical data output](#statistical-data-output-example)
+12. [Command line arguments](#command-line-arguments)
+13. [Typical options usage](#typical-options-usage)
+14. [Authorship](#authorship)
+15. [Acknowledgements](#acknowledgements)
 
 
 
