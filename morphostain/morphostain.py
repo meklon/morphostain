@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 
 
 from .import hasel
-from .import resources
 
 # Optional imports of pandas and seaborn are located in functions
 # group_analyze() and plot_group().
@@ -418,7 +417,7 @@ def main():
     else:
         thresh_0 = parsed_json["thresh_0"]
 
-    if args.thresh0:
+    if args.thresh1:
         thresh_1 = args.thresh1
     else:
         thresh_1 = parsed_json["thresh_1"]
