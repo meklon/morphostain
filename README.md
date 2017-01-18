@@ -137,9 +137,10 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 
 *-m, --matrix* (optional) - Your matrix in a JSON formatted file. Could be used for alternative stain vectors. Not for regular use yet. Test in progress.
 
+*-d, --dpi (optional)* - Output images DPI. 900 is recommended for printing quality. High resolution can significally slow down the process.
 ####Typical options usage
 ````
-morphostain -p /home/meklon/Data/sample/test/ -t0 35 -t1 -e 89 -s -a
+morphostain -p /home/meklon/Data/sample/test/ -t0 35 -t1 40 -e 89 -s -a --dpi 600
 ````
 
 ### JSON structure
