@@ -1,15 +1,34 @@
 # MorphoStain
 Python soft for morphometric stain analysis. Software counts the stained area with determined stain (DAB-chromagen for example) using the typical immunohistochemistry protocols. After the analysis user can measure the difference of proteins content in tested samples.
 
+### Contents:
+1. [Application](#Application)
+2. [Requirements](#Requirements)
+3. [Installation](#Installation)
+4. [Basic principles](#Basic principles)
+5. [Image samples requirements](#Image samples requirements)
+6. [Interface type](#Interface type)
+7. [Composite image examples](#Composite image examples)
+8. [Summary statistics](#Summary statistics image example)
+9. [Log](#Log example)
+10. [CSV output](#CSV output example)
+11. [Statistical data output](#Statistical data output example)
+12. [Command line arguments](#Command line arguments)
+13. [Typical options usage](#Typical options usage)
+14. [Authorship](#Authorship)
+15. [Acknowledgements](#Acknowledgements)
+
+
+
 ### Application:
 Quantitative analysis of extracellular matrix proteins in IHC-analysis, designed for scientists in biotech sphere. Could be also used for general morphometric analysis.
 
 ### Requirements:
 Python 2.7 or Python 3.4-3.5
 
-Python libraries: numpy, scipy, skimage, matplotlib
+Python libraries: numpy, scipy, skimage, matplotlib, pandas
 
-Optional (for group analysis): pandas, seaborn
+Optional (for group analysis): seaborn
 
 ### Installation:
 Install **pip** using your system package manager. For example in Debian/Ubuntu:
@@ -42,6 +61,16 @@ Color deconvolution is used to separate stains in multi-stained sample. This sof
 After stain separation, script determines the stain-positive area using the default or user-defined threshold. The empty areas are excluded from the final relative area measurement as the sample could contain free space, which would affect the result accuracy.
 
 Script creates the result folder inside the --path. Statistics, log and composite images for each sample are saved there.
+
+### Image samples requirements
+1. Image samples' **white balance should be normalized**! It is important to get the right colors of stains before separation. I could suggest free software like [Rawtherapee](http://rawtherapee.com/)
+2. Images should be acquired using the **same exposure values**
+3. Threshold should be the same at the whole image sequence if you want to compare them
+4. It would be better to use the manual mode in microscope camera to be sure, that your images were taken with the same parameters.
+5. Don't change light intensity in microscope during the sequence acquiring.
+6. Correct file naming should be used if group analysis is active. Everything before _ symbol will be recognized as a group name.
+
+
 ### Examples
 You can find test images in this repository.
 
@@ -91,33 +120,51 @@ Pan|10.21375|7.495407998997023|7.29|2.92|21.97
 Trop|13.702000000000002|3.9725329171421317|14.235|7.22|20.34
 VEGF|6.644444444444444|5.6577117969880515|4.84|0.96|16.7
 
-### User manual
+### Command line arguments
 Place all the sample images (8-bit) inside the separate folder. Subdirectories are excluded from analysis. Use the following options:
 
 *-p, --path* (obligate) - path to the target directory with samples
 
-*-t, --thresh* (optional) - threshold for stain+ area separation. If empty the default value would be used (threshDefault = 30).
+*-t0, --thresh0* (optional) - Global threshold for stain-positive area of channel_0 stain.
+
+*-t1, --thresh1* (optional) - Global threshold for stain-positive area of channel_2 stain.
 
 *-e, --empty* (optional) - threshold for **empty area** separation. If empty the default value would be used (threshEmptyDefault = 101). It is disabled for default and should be used only in a case of hollow organs and unavoidable edge defects.
 
-*-s, --silent* (otional) - if True, the real-time composite image visualisation would be supressed. The output will be just saved in the result folder.
+*-s, --silent* (optional) - if True, the real-time composite image visualisation would be supressed. The output will be just saved in the result folder.
 
 *-a, --analyze* (optional) - Add group analysis after the indvidual image processing. The groups are created using the filename. Everything before _ symbol will be recognized as a group name. Example: **Native_10.jpg, Native_11.jpg** will be counted as a single group **Native**.
 
 *-m, --matrix* (optional) - Your matrix in a JSON formatted file. Could be used for alternative stain vectors. Not for regular use yet. Test in progress.
 
-####Example
+####Typical options usage
 ````
-morphostain -p /home/meklon/Data/sample/test/ -t 35 -e 89 -s -a
+morphostain -p /home/meklon/Data/sample/test/ -t0 35 -t1 -e 89 -s -a
 ````
 
-### Image samples requirements
-1. Image samples' **white balance should be normalized**! It is important to get the right colors of stains before separation. I could suggest free software like [Rawtherapee](http://rawtherapee.com/)
-2. Images should be acquired using the **same exposure values**
-3. Threshold should be the same at the whole image sequence if you want to compare them
-4. It would be better to use the manual mode in microscope camera to be sure, that your images were taken with the same parameters.
-5. Don't change light intensity in microscope during the sequence acquiring.
-6. Correct file naming should be used if group analysis is active. Everything before _ symbol will be recognized as a group name.
+### JSON structure
+Stain vectors and predefined values like typical thresholds are stored in JSON format. By default dab.json is loaded. You can also use your own one with --matrix option.
+Histogram shift values are used to normalize image histogram.
+Typical structure:
+```json
+{
+  "channel_0":"Hematoxylin",
+  "channel_1":"DAB-chromogen",
+  "channel_2":"Supplementary channel",
+  "vector": [[0.66504073, 0.61772484, 0.41968665],
+            [0.4100872, 0.5751321, 0.70785],
+            [0.6241389, 0.53632, 0.56816506]],
+  "thresh_0":30,
+  "thresh_1":40,
+  "hist_shift_0":5,
+  "hist_shift_1":18,
+  "hist_shift_2":0
+}
+
+```
 
 ### Authorship
 Gumenyuk Ivan, Kuban state medical university, Russia.
+
+### Acknowledgements
+Special thanks to my teammates from our lab, Eugene Dvoretsky (@radioxoma), Alexey Lavrenuke (@direvius) and everyone, who helped me with this work.
