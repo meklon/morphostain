@@ -168,4 +168,5 @@ Gumenyuk Ivan, Kuban state medical university, Russia.
 
 ### Acknowledgements
 Special thanks to my teammates from our lab, [@radioxoma (Eugene Dvoretsky)](https://github.com/radioxoma),
- [@direvius (Alexey Lavrenuke)](https://github.com/direvius) and everyone, who helped me with this work.
+ [@direvius (Alexey Lavrenuke)](https://github.com/direvius), [@freuser](https://github.com/freuser) for his GUI (sorry, I haven't implemented
+ it yet) and everyone, who helped me with this work.
