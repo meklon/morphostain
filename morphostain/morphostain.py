@@ -52,6 +52,7 @@ def parse_arguments():
                                                                                    "recommended for printing quality."
                                                                                    " High resolution can significally"
                                                                                    " slow down the process.")
+    parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
     arguments = parser.parse_args()
     return arguments
 
@@ -228,17 +229,17 @@ def resize_input_image(image_original, size):
     return image_original
 
 
-def image_process(var_pause, matrix_stains, args, path_output, pathOutputLog, str_ch0, str_ch1, str_ch2,
-                  filename):
+def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0, str_ch1, str_ch2,
+                  thresh_0, thresh_1, filename):
     """
     Main cycle, split into several processes using the Pool(). All images pass through this
     function. The result of this function is composite images, saved in the target directory,
     log output and array_data - numpy array, containing the data obtained.
     Optimized thresholds are loaded from json with stain parameters
     """
+    global args
+
     parsed_json = json_parse()
-    thresh_0 = parsed_json["thresh_0"]
-    thresh_1 = parsed_json["thresh_1"]
 
     path_input_image = os.path.join(args.path, filename)
     path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
@@ -373,7 +374,13 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi):
 
 
 def json_parse():
-    json_path = resource_filename(__name__, 'resources/stains.json')
+    global args
+
+    if args.matrix:
+        json_path = resource_filename(__name__, args.matrix)
+    else:
+        json_path = resource_filename(__name__, 'resources/dab.json')
+
     json_data = open(json_path)
     parsed_json = json.load(json_data)
     return parsed_json
@@ -382,17 +389,17 @@ def json_parse():
 def main():
     """
     """
-    list_data = []
+    # Parse the arguments
+    global args
+    args = parse_arguments()
 
+    list_data = []
     # Pause in seconds between the composite images when --silent(-s) argument is not active
     var_pause = 5
     # Initialize the global timer
     start_time_global = timeit.default_timer()
-    # Parse the arguments
-    args = parse_arguments()
 
     # load internal resources in json format
-    # todo: create the easy selection of stain type from json, add other stains
     parsed_json = json_parse()
 
     vector_raw_stain = np.array(parsed_json["vector"])
@@ -404,9 +411,21 @@ def main():
 
     check_mkdir_output_path(path_output)
     filenames = get_image_filenames(args.path)
+
+    #Thresholds are got from predefined values in JSON for selected stain or from user-defined args
+    if args.thresh0:
+        thresh_0 = args.thresh0
+    else:
+        thresh_0 = parsed_json["thresh_0"]
+
+    if args.thresh0:
+        thresh_1 = args.thresh1
+    else:
+        thresh_1 = parsed_json["thresh_1"]
+
     log_and_console(path_output_log, "Images for analysis: " + str(len(filenames)), True)
-    log_and_console(path_output_log, str_ch0 + " threshold = " + str(args.thresh0) +
-                    ", " + str_ch1 + " threshold = " + str(args.thresh1) +
+    log_and_console(path_output_log, str_ch0 + " threshold = " + str(thresh_0) +
+                    ", " + str_ch1 + " threshold = " + str(thresh_1) +
                     ", Empty threshold = " + str(args.empty))
     if args.empty > 100:
         log_and_console(path_output_log, "Empty area filtering is disabled.")
@@ -422,7 +441,7 @@ def main():
     pool = Pool(cores)
 
     wrapper_image_process = partial(image_process, var_pause, matrix_stains,
-                                    args, path_output, path_output_log, str_ch0, str_ch1, str_ch2)
+                                    path_output, path_output_log, str_ch0, str_ch1, str_ch2, thresh_0, thresh_1)
     for poolResult in pool.imap(wrapper_image_process, filenames):
         list_data.append(poolResult)
     pool.close()
