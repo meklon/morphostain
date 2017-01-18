@@ -167,4 +167,4 @@ Typical structure:
 Gumenyuk Ivan, Kuban state medical university, Russia.
 
 ### Acknowledgements
-Special thanks to my teammates from our lab, Eugene Dvoretsky (@radioxoma), Alexey Lavrenuke (@direvius) and everyone, who helped me with this work.
+Special thanks to my teammates from our lab, @radioxoma (Eugene Dvoretsky), @direvius (Alexey Lavrenuke) and everyone, who helped me with this work.
