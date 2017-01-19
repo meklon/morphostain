@@ -52,6 +52,8 @@ def parse_arguments():
                                                                                    " High resolution can significally"
                                                                                    " slow down the process.")
     parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
+    parser.add_argument("-sc", "--save_channels", required=False, help="Save separate stain channels to subfolder",
+                        action="store_true")
     arguments = parser.parse_args()
     return arguments
 
@@ -213,10 +215,6 @@ def check_mkdir_output_path(path_output):
 
     if not os.path.exists(path_output):
         os.mkdir(path_output)
-        print("Created result directory")
-    else:
-        print("Output result directory already exists. All the files inside would be overwritten!")
-
 
 def resize_input_image(image_original, size):
     """
@@ -244,14 +242,13 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
     path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
     image_original = mpimg.imread(path_input_image)
 
-    size_image = 480, 640
+    size_image = 768, 1024
     image_original = resize_input_image(image_original, size_image)
 
     stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains)
 
     thresh_stain_ch0, thresh_empty = count_thresholds(stain_ch0, channel_lightness, thresh_0, args.empty)
     area_rel_empty, area_rel_stain_ch0 = count_areas(thresh_stain_ch0, thresh_empty)
-
     thresh_stain_ch1, thresh_empty = count_thresholds(stain_ch1, channel_lightness, thresh_1, args.empty)
     area_rel_empty, area_rel_stain_ch1 = count_areas(thresh_stain_ch1, thresh_empty)
 
@@ -259,6 +256,13 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
     plt.close('all')
 
     list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
+
+    #Optional. Save the separate channels of used stains
+    if args.save_channels:
+        path_channel_subdir = os.path.join(path_output, "separate_channels/")
+        check_mkdir_output_path(path_channel_subdir)
+        plot_channels(filename, stain_ch0, path_channel_subdir, pathOutputLog, str_ch0, args.dpi)
+        plot_channels(filename, stain_ch1, path_channel_subdir, pathOutputLog, str_ch1, args.dpi)
 
     # Creating the complex image
     plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
@@ -325,10 +329,7 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
 def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
                 str_ch0, str_ch1, str_ch2):
     """
-    Function plots the figure for every sample image. It creates the histogram from the stain array.
-    Then it takes the bins values and clears the plot. That's done because fill_between function doesn't
-    work with histogram but only with ordinary plots. After all function fills the area between zero and
-    plot if the values are above the threshold.
+    Function plots the figure for every sample image.
     """
     plt.figure(num=None, figsize=(14, 7), dpi=150, facecolor='w', edgecolor='k')
     plt.subplot(231)
@@ -370,6 +371,12 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi):
     sns.boxplot(x=data_frame.index, y=str_col, data=data_frame)
     plt.tight_layout()
     plt.savefig(path_output_image, dpi=dpi)
+
+
+def plot_channels(filename, channel, path_channel_subdir, path_output_log, str_ch, dpi):
+    path_output_image = os.path.join(path_channel_subdir, str_ch + "_channel_" + filename.split(".")[0] +".png")
+    misc.imsave(path_output_image, channel)
+    log_and_console(path_output_log, "Image saved: {}".format(path_output_image))
 
 
 def json_parse():
@@ -423,9 +430,10 @@ def main():
         thresh_1 = parsed_json["thresh_1"]
 
     log_and_console(path_output_log, "Images for analysis: " + str(len(filenames)), True)
-    log_and_console(path_output_log, str_ch0 + " threshold = " + str(thresh_0) +
-                    ", " + str_ch1 + " threshold = " + str(thresh_1) +
-                    ", Empty threshold = " + str(args.empty))
+    log_and_console(path_output_log, "{} threshold = {}, {} threshold = {},"
+                                     " Empty threshold = {}".format(str_ch0, thresh_0, str_ch1,
+                                                                    thresh_1, args.empty))
+
     if args.empty > 100:
         log_and_console(path_output_log, "Empty area filtering is disabled.")
 
