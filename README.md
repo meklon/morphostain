@@ -127,7 +127,7 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 
 *-t0, --thresh0* (optional) - Global threshold for stain-positive area of channel_0 stain.
 
-*-t1, --thresh1* (optional) - Global threshold for stain-positive area of channel_2 stain.
+*-t1, --thresh1* (optional) - Global threshold for stain-positive area of channel_1 stain.
 
 *-e, --empty* (optional) - threshold for **empty area** separation. If empty the default value would be used (threshEmptyDefault = 101). It is disabled for default and should be used only in a case of hollow organs and unavoidable edge defects.
 
@@ -138,6 +138,10 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 *-m, --matrix* (optional) - Your matrix in a JSON formatted file. Could be used for alternative stain vectors. Not for regular use yet. Test in progress.
 
 *-d, --dpi (optional)* - Output images DPI. 900 is recommended for printing quality. High resolution can significally slow down the process.
+
+*-sc, --save_channels (optional)* - Save separate stain channels to subfolder. Could be useful if you plan to process the deconvolution
+ result using other software. For example, counting separated nuclei with CellProfiler.
+
 ####Typical options usage
 ````
 morphostain -p /home/meklon/Data/sample/test/ -t0 35 -t1 40 -e 89 -s -a --dpi 600
