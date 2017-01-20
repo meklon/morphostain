@@ -383,7 +383,7 @@ def json_parse():
     global args
 
     if args.matrix:
-        json_path = resource_filename(__name__, args.matrix)
+        json_path = args.matrix
     else:
         json_path = resource_filename(__name__, 'resources/dab.json')
 
