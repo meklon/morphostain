@@ -44,6 +44,10 @@ In the root folder of repository clone perform:
 ```
 sudo pip3 install .
 ```
+Note: you may require additional libraries for matplotlib:
+```
+sudo apt-get install libfreetype6 libpng3 
+```
 
 Uninstall:
 ```
