@@ -54,6 +54,8 @@ def parse_arguments():
     parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
     parser.add_argument("-sc", "--save_channels", required=False, help="Save separate stain channels to subfolder",
                         action="store_true")
+    parser.add_argument("-n", "--notch", required=False, action="store_true",
+                        help="Notches for boxplot in group analysis to show confidence interval")
     arguments = parser.parse_args()
     return arguments
 
@@ -309,13 +311,17 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     df.index.name = 'Group'
     df = df.apply(pd.to_numeric, errors='ignore')
 
-    #Channel_0 stats
+    # Counting unique group number. Would be used for plot horizontal aspect
+    group_num = df.groupby(df.index)[str_col0].nunique()
+    group_num = len(group_num.index)
+
+    # Channel_0 stats
     groupby_ch0 = df[str_col0].groupby(df.index)
     data_stats = groupby_ch0.agg([np.mean, np.std, np.median, np.min, np.max])
     path_output_stats = os.path.join(path_output, "group_stats_" + str_ch0 + ".csv")
     data_stats.to_csv(path_output_stats)
     print(data_stats)
-    plot_group(df, path_output, str_ch0, str_col0, dpi)
+    plot_group(df, path_output, str_ch0, str_col0, dpi, group_num)
 
     # Channel_1 stats
     groupby_ch1 = df[str_col1].groupby(df.index)
@@ -323,7 +329,7 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     path_output_stats = os.path.join(path_output, "group_stats_" + str_ch1 + ".csv")
     data_stats.to_csv(path_output_stats)
     print(data_stats)
-    plot_group(df, path_output, str_ch1, str_col1, dpi)
+    plot_group(df, path_output, str_ch1, str_col1, dpi, group_num)
 
 
 def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
@@ -359,16 +365,20 @@ def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightne
     plt.tight_layout()
 
 
-def plot_group(data_frame, path_output, str_ch, str_col, dpi):
+def plot_group(data_frame, path_output, str_ch, str_col, dpi, group_num):
+    global args
     # optional import
     import seaborn as sns
+
     path_output_image = os.path.join(path_output, "group_stats_" + str_ch + ".png")
     print(data_frame)
     sns.set_style("whitegrid")
     sns.set_context("talk")
-    plt.figure(num=None, figsize=(15, 7), dpi=150)
+    # figsize aspect is regulated by number of groups to match the cases with
+    # small and large group number
+    plt.figure(num=None, figsize=(2*group_num, 7), dpi=150)
     plt.ylim(0, 100)
-    sns.boxplot(x=data_frame.index, y=str_col, data=data_frame)
+    sns.boxplot(x=data_frame.index, y=str_col, data=data_frame, notch=args.notch)
     plt.tight_layout()
     plt.savefig(path_output_image, dpi=dpi)
 
