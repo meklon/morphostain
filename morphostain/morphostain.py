@@ -259,15 +259,17 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
 
     list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
 
-    #Optional. Save the separate channels of used stains
+    # Optional. Save the separate channels of used stains
     if args.save_channels:
         path_channel_subdir = os.path.join(path_output, "separate_channels/")
         check_mkdir_output_path(path_channel_subdir)
         plot_channels(filename, stain_ch0, path_channel_subdir, pathOutputLog, str_ch0, args.dpi)
         plot_channels(filename, stain_ch1, path_channel_subdir, pathOutputLog, str_ch1, args.dpi)
+        plot_channels(filename, thresh_stain_ch0, path_channel_subdir, pathOutputLog, str_ch0 + '-positive area', args.dpi)
+        plot_channels(filename, thresh_stain_ch1, path_channel_subdir, pathOutputLog, str_ch1 + '-positive area', args.dpi)
 
     # Creating the complex image
-    plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
+    plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
                 str_ch0, str_ch1, str_ch2)
     plt.savefig(path_output_image, dpi=args.dpi)
 
@@ -332,7 +334,7 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     plot_group(df, path_output, str_ch1, str_col1, dpi, group_num)
 
 
-def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, channel_lightness, thresh_stain_ch0, thresh_stain_ch1,
+def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
                 str_ch0, str_ch1, str_ch2):
     """
     Function plots the figure for every sample image.
