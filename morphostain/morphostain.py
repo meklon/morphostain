@@ -268,7 +268,7 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
         plot_channels(filename, thresh_stain_ch0, path_channel_subdir, pathOutputLog, str_ch0 + '-positive area', args.dpi)
         plot_channels(filename, thresh_stain_ch1, path_channel_subdir, pathOutputLog, str_ch1 + '-positive area', args.dpi)
 
-    # Creating the complex image
+    # Creating the composite image
     plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
                 str_ch0, str_ch1, str_ch2)
     plt.savefig(path_output_image, dpi=args.dpi)
@@ -372,7 +372,8 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi, group_num):
     # optional import
     import seaborn as sns
 
-    path_output_image = os.path.join(path_output, "group_stats_" + str_ch + ".png")
+    path_output_image_png = os.path.join(path_output, "group_stats_" + str_ch + ".png")
+    path_output_image_svg = os.path.join(path_output, "group_stats_" + str_ch + ".svg")
     print(data_frame)
     sns.set_style("whitegrid")
     sns.set_context("talk")
@@ -382,7 +383,8 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi, group_num):
     plt.ylim(0, 100)
     sns.boxplot(x=data_frame.index, y=str_col, data=data_frame, notch=args.notch)
     plt.tight_layout()
-    plt.savefig(path_output_image, dpi=dpi)
+    plt.savefig(path_output_image_png, dpi=dpi)
+    plt.savefig(path_output_image_svg)
 
 
 def plot_channels(filename, channel, path_channel_subdir, path_output_log, str_ch, dpi):
