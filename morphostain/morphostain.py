@@ -269,8 +269,8 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
         plot_channels(filename, thresh_stain_ch1, path_channel_subdir, pathOutputLog, str_ch1 + '-positive area', args.dpi)
 
     # Creating the composite image
-    plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
-                str_ch0, str_ch1, str_ch2)
+    plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
+                          str_ch0, str_ch1, str_ch2)
     plt.savefig(path_output_image, dpi=args.dpi)
 
     log_and_console(pathOutputLog, "Image saved: {}".format(path_output_image))
@@ -334,8 +334,8 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     plot_group(df, path_output, str_ch1, str_col1, dpi, group_num)
 
 
-def plot_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
-                str_ch0, str_ch1, str_ch2):
+def plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
+                          str_ch0, str_ch1, str_ch2):
     """
     Function plots the figure for every sample image.
     """
