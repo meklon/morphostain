@@ -74,6 +74,8 @@ Script creates the result folder inside the --path. Statistics, log and composit
 5. Don't change light intensity in microscope during the sequence acquiring.
 6. Correct file naming should be used if group analysis is active. Everything before _ symbol will be recognized as a group name.
 
+### Valid file extensions
+There should be files of the following extensions in the input directory: '.jpg', '.jpeg', '.tif', '.tiff', '.png', '.bmp'
 
 ### Examples
 You can find test images in this repository.

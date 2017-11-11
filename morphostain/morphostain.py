@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import timeit
 import json
 from multiprocessing import Pool, cpu_count
@@ -68,6 +69,20 @@ def get_image_filenames(path):
 
     return [name for name in sorted(os.listdir(path))
             if not os.path.isdir(os.path.join(path, name))]
+
+
+def validate_input(filenames_raw):
+    """
+    Function is validating the input. Error is risen when filenames are empty. Non-graphical files are excluded.
+    :param: filenames_raw
+    :return: filenames_validated
+    """
+    extensions = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', '.bmp', '.JPG', '.JPEG', '.TIF', '.TIFF', '.PNG', '.BMP')
+    filenames_validated = [filename for filename in filenames_raw if filename.endswith(extensions)]
+    if not filenames_validated:
+        sys.exit("Error. No image files to analyse. Input directory is empty")
+
+    return filenames_validated
 
 
 def calc_deconv_matrix(vector_raw_stains):
@@ -431,8 +446,9 @@ def main():
 
     check_mkdir_output_path(path_output)
     filenames = get_image_filenames(args.path)
+    filenames = validate_input(filenames)
 
-    #Thresholds are got from predefined values in JSON for selected stain or from user-defined args
+    # Thresholds are got from predefined values in JSON for selected stain or from user-defined args
     if args.thresh0:
         thresh_0 = args.thresh0
     else:
