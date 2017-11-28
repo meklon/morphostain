@@ -52,6 +52,10 @@ def parse_arguments():
                                                                                    "recommended for printing quality."
                                                                                    " High resolution can significally"
                                                                                    " slow down the process.")
+    parser.add_argument("-rs", "--resize", required=False, nargs='+', default=(768, 1024), type=int,
+                        help="Image resolution for processing speed up. Higher resolution increases the accuracy,"
+                             " but can significally slow down the process. Default value is (768,1024)."
+                             " Pass values like '--resize 768 1024'")
     parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
     parser.add_argument("-sc", "--save_channels", required=False, help="Save separate stain channels to subfolder",
                         action="store_true")
@@ -59,6 +63,7 @@ def parse_arguments():
                         help="Notches for boxplot in group analysis to show confidence interval")
     arguments = parser.parse_args()
     return arguments
+
 
 
 def get_image_filenames(path):
@@ -259,8 +264,8 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
     path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
     image_original = mpimg.imread(path_input_image)
 
-    size_image = 768, 1024
-    image_original = resize_input_image(image_original, size_image)
+    resize_resolution = tuple(args.resize)
+    image_original = resize_input_image(image_original, resize_resolution)
 
     stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains)
 

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='morphostain',
-    version='1.0.6',
+    version='1.0.7',
     description='DAB-chromagen analysis tool',
     longer_description='''
 MorphoStain counts the stained area with
