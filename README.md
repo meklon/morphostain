@@ -150,6 +150,9 @@ Place all the sample images (8-bit) inside the separate folder. Subdirectories a
 *-sc, --save_channels (optional)* - Save separate stain channels to subfolder. Could be useful if you plan to process the deconvolution
  result using other software. For example, counting separated nuclei with CellProfiler.
 
+*-n, --notch (optional)* - Notches for boxplot in group analysis to show confidence interval.
+
+
 #### Typical options usage
 ````
 morphostain -p /home/meklon/Data/sample/test/ -t0 35 -t1 40 -e 89 -s -a --dpi 600 --resize 480 640

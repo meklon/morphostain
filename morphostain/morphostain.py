@@ -100,11 +100,11 @@ def calc_deconv_matrix(vector_raw_stains):
     return matrix_stains
 
 
-def separate_channels(image_original, matrix_dh):
+def separate_channels(image_original, matrix_dh, args):
     """
     Separate the stains using the custom matrix
     """
-    parsed_json = json_parse()
+    parsed_json = json_parse(args)
     # Histogram shift. This correction makes the background really blank. After the correction
     # numpy clipping is performed to fit the 0-100 range
     hist_shift_0 = parsed_json["hist_shift_0"]
@@ -194,11 +194,11 @@ def count_areas(thresh_stain, thresh_empty):
     return area_rel_empty, area_rel_stain
 
 
-def stack_data(list_filenames, list_data):
+def stack_data(list_filenames, list_data, args):
     """
     Function stacks the data from data lists.
     """
-    parsed_json = json_parse()
+    parsed_json = json_parse(args)
     str_ch0 = parsed_json["channel_0"]
     str_ch1 = parsed_json["channel_1"]
     str_col0 = str_ch0 + "-positive area, %"
@@ -208,11 +208,11 @@ def stack_data(list_filenames, list_data):
     return pandas_df
 
 
-def save_data(path_output_csv, array_filenames, list_data):
+def save_data(path_output_csv, array_filenames, list_data, args):
     """
     Function puts data array to the output csv file.
     """
-    data_output = stack_data(array_filenames, list_data)
+    data_output = stack_data(array_filenames, list_data, args)
     print(data_output)
 
     # write array to csv file
@@ -249,16 +249,13 @@ def resize_input_image(image_original, size):
 
 
 def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0, str_ch1, str_ch2,
-                  thresh_0, thresh_1, filename):
+                  thresh_0, thresh_1, args, filename):
     """
     Main cycle, split into several processes using the Pool(). All images pass through this
     function. The result of this function is composite images, saved in the target directory,
     log output and array_data - numpy array, containing the data obtained.
     Optimized thresholds are loaded from json with stain parameters
     """
-    global args
-
-    parsed_json = json_parse()
 
     path_input_image = os.path.join(args.path, filename)
     path_output_image = os.path.join(path_output, filename.split(".")[0] + "_analysis.png")
@@ -267,7 +264,7 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
     resize_resolution = tuple(args.resize)
     image_original = resize_input_image(image_original, resize_resolution)
 
-    stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains)
+    stain_ch0, stain_ch1, stain_ch2, channel_lightness = separate_channels(image_original, matrix_stains, args)
 
     thresh_stain_ch0, thresh_empty = count_thresholds(stain_ch0, channel_lightness, thresh_0, args.empty)
     area_rel_empty, area_rel_stain_ch0 = count_areas(thresh_stain_ch0, thresh_empty)
@@ -315,7 +312,7 @@ def group_filenames(filenames):
     return list_file_group
 
 
-def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
+def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args):
     """
     Statistical group analysis. Output is csv file with results, and group plot
     function.
@@ -343,7 +340,7 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     path_output_stats = os.path.join(path_output, "group_stats_" + str_ch0 + ".csv")
     data_stats.to_csv(path_output_stats)
     print(data_stats)
-    plot_group(df, path_output, str_ch0, str_col0, dpi, group_num)
+    plot_group(df, path_output, str_ch0, str_col0, args, group_num)
 
     # Channel_1 stats
     groupby_ch1 = df[str_col1].groupby(df.index)
@@ -351,7 +348,7 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, dpi):
     path_output_stats = os.path.join(path_output, "group_stats_" + str_ch1 + ".csv")
     data_stats.to_csv(path_output_stats)
     print(data_stats)
-    plot_group(df, path_output, str_ch1, str_col1, dpi, group_num)
+    plot_group(df, path_output, str_ch1, str_col1, args, group_num)
 
 
 def plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
@@ -387,8 +384,7 @@ def plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thres
     plt.tight_layout()
 
 
-def plot_group(data_frame, path_output, str_ch, str_col, dpi, group_num):
-    global args
+def plot_group(data_frame, path_output, str_ch, str_col, args, group_num):
     # optional import
     import seaborn as sns
 
@@ -403,7 +399,7 @@ def plot_group(data_frame, path_output, str_ch, str_col, dpi, group_num):
     plt.ylim(0, 100)
     sns.boxplot(x=data_frame.index, y=str_col, data=data_frame, notch=args.notch)
     plt.tight_layout()
-    plt.savefig(path_output_image_png, dpi=dpi)
+    plt.savefig(path_output_image_png, dpi=args.dpi)
     plt.savefig(path_output_image_svg)
 
 
@@ -413,8 +409,7 @@ def plot_channels(filename, channel, path_channel_subdir, path_output_log, str_c
     log_and_console(path_output_log, "Image saved: {}".format(path_output_image))
 
 
-def json_parse():
-    global args
+def json_parse(args):
 
     if args.matrix:
         json_path = args.matrix
@@ -430,7 +425,6 @@ def main():
     """
     """
     # Parse the arguments
-    global args
     args = parse_arguments()
 
     list_data = []
@@ -440,7 +434,7 @@ def main():
     start_time_global = timeit.default_timer()
 
     # load internal resources in json format
-    parsed_json = json_parse()
+    parsed_json = json_parse(args)
 
     vector_raw_stain = np.array(parsed_json["vector"])
     str_ch0 = parsed_json["channel_0"]
@@ -483,7 +477,7 @@ def main():
     pool = Pool(cores)
 
     wrapper_image_process = partial(image_process, var_pause, matrix_stains,
-                                    path_output, path_output_log, str_ch0, str_ch1, str_ch2, thresh_0, thresh_1)
+                                    path_output, path_output_log, str_ch0, str_ch1, str_ch2, thresh_0, thresh_1, args)
     for poolResult in pool.imap(wrapper_image_process, filenames):
         list_data.append(poolResult)
     pool.close()
@@ -494,12 +488,12 @@ def main():
         list_filenames.append(filename)
 
     # Creating summary csv after main cycle end
-    save_data(path_output_csv, list_filenames, list_data)
+    save_data(path_output_csv, list_filenames, list_data, args)
 
     # Optional statistical group analysis.
     if args.analyze:
         log_and_console(path_output_log, "Group analysis is active")
-        group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args.dpi)
+        group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args)
 
     # End of the global timer
     elapsed_global = timeit.default_timer() - start_time_global
