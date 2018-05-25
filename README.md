@@ -37,14 +37,21 @@ Install **pip** using your system package manager. For example in Debian/Ubuntu:
 sudo apt-get install python3-pip
 ```
 
-Clone this repository
+Install package using PyPi repository:
+```
+sudo pip3 install morphostain
+```
+
+**Alternative installation**
+
+Clone this repository.
 
 In the root folder of repository clone perform:
 
 ```
 sudo pip3 install .
 ```
-Note: you may require additional libraries for matplotlib:
+**Note**: you may require additional libraries for matplotlib:
 ```
 sudo apt-get install libfreetype6 libpng3 
 ```
