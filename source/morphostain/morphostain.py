@@ -6,16 +6,18 @@ import json
 from multiprocessing import Pool, cpu_count
 from functools import partial
 from pkg_resources import resource_filename
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from scipy import linalg, misc
-from skimage import color
+from scipy import linalg
+from PIL import Image
+from skimage.color import separate_stains
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
+from hasel import hasel
 
-from .import hasel
 
 # Optional imports of pandas and seaborn are located in functions
 # group_analyze() and plot_group().
@@ -38,19 +40,19 @@ def parse_arguments():
                         type=int, help="Global threshold for EMPTY area,"
                                        "from 0 to 100. Default value is 101,"
                                        " which is equal to disabled empty area filter.")
-    parser.add_argument("-s", "--silent", required=False, help="Supress figure rendering during the analysis,"
+    parser.add_argument("-s", "--silent", required=False, help="Suppress figure rendering during the analysis,"
                                                                " only final results"
                                                                " will be saved", action="store_true")
-    parser.add_argument("-a", "--analyze", required=False, help="Add group analysis after the indvidual image"
+    parser.add_argument("-a", "--analyze", required=False, help="Add group analysis after the individual image"
                                                                 " processing. The groups are created using the"
                                                                 " filename. Everything before '_' symbol will"
                                                                 " be recognized as a group name. Example:"
                                                                 " sample01_10.jpg, sample01_11.jpg will be"
                                                                 " counted as a single group 'sample01'",
-                                                                action="store_true")
+                        action="store_true")
     parser.add_argument("-d", "--dpi", required=False, default=200, type=int, help="Output images DPI. 900 is "
                                                                                    "recommended for printing quality."
-                                                                                   " High resolution can significally"
+                                                                                   " High resolution can significantly"
                                                                                    " slow down the process.")
     parser.add_argument("-rs", "--resize", required=False, nargs='+', default=(768, 1024), type=int,
                         help="Image resolution for processing speed up. Higher resolution increases the accuracy,"
@@ -63,7 +65,6 @@ def parse_arguments():
                         help="Notches for boxplot in group analysis to show confidence interval")
     arguments = parser.parse_args()
     return arguments
-
 
 
 def get_image_filenames(path):
@@ -79,8 +80,6 @@ def get_image_filenames(path):
 def validate_input(filenames_raw):
     """
     Function is validating the input. Error is risen when filenames are empty. Non-graphical files are excluded.
-    :param: filenames_raw
-    :return: filenames_validated
     """
     extensions = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', '.bmp', '.JPG', '.JPEG', '.TIF', '.TIFF', '.PNG', '.BMP')
     filenames_validated = [filename for filename in filenames_raw if filename.endswith(extensions)]
@@ -90,7 +89,7 @@ def validate_input(filenames_raw):
     return filenames_validated
 
 
-def calc_deconv_matrix(vector_raw_stains):
+def calc_deconv_matrix(vector_raw_stains: np.array) -> np.array:
     """
     Calculating matrix for deconvolution
     """
@@ -100,7 +99,8 @@ def calc_deconv_matrix(vector_raw_stains):
     return matrix_stains
 
 
-def separate_channels(image_original, matrix_dh, args):
+def separate_channels(image_original: np.array, matrix_dh: np.array, args) -> Tuple[np.array, np.array, np.array,
+                                                                                    np.array]:
     """
     Separate the stains using the custom matrix
     """
@@ -111,7 +111,7 @@ def separate_channels(image_original, matrix_dh, args):
     hist_shift_1 = parsed_json["hist_shift_1"]
     hist_shift_2 = parsed_json["hist_shift_2"]
 
-    image_separated = color.separate_stains(image_original, matrix_dh)
+    image_separated = separate_stains(image_original, matrix_dh)
     stain_ch0 = image_separated[..., 0]
     stain_ch1 = image_separated[..., 1]
     stain_ch2 = image_separated[..., 2]
@@ -162,11 +162,11 @@ def log_only(path_output_log, text_log):
     Write the log to the file only
     """
     with open(path_output_log, "a") as fileLog:
-            fileLog.write(text_log)
-            fileLog.write('\n')
+        fileLog.write(text_log)
+        fileLog.write('\n')
 
 
-def count_thresholds(stain, channel_lightness, thresh_channel, thresh_empty_default):
+def count_thresholds(stain, channel_lightness, thresh_channel: int, thresh_empty_default: int):
     """
     Counts thresholds. "stain" is a distribution map of stain, channel_lightness is a L channel from
     original image in HSL color space. The output are the thresholded images of stain-positive areas and
@@ -238,17 +238,16 @@ def check_mkdir_output_path(path_output):
     if not os.path.exists(path_output):
         os.mkdir(path_output)
 
-def resize_input_image(image_original, size):
+
+def resize_input_image(image_original: np.array, size: Tuple[int, int]) -> np.array:
     """
     Resizing the original images makes the slowest functions calc_deconv_matrix() and hasel.hsl2rgb()
     work much faster. There are no visual troubles or negative effects to the accuracy.
     """
-
-    image_original = misc.imresize(image_original, size, interp='nearest')
-    return image_original
+    return np.array(Image.fromarray(image_original).resize(size=size))
 
 
-def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0, str_ch1, str_ch2,
+def image_process(var_pause, matrix_stains, path_output, path_output_log, str_ch0, str_ch1, str_ch2,
                   thresh_0, thresh_1, args, filename):
     """
     Main cycle, split into several processes using the Pool(). All images pass through this
@@ -277,20 +276,20 @@ def image_process(var_pause, matrix_stains, path_output, pathOutputLog, str_ch0,
     list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
 
     # Optional. Save the separate channels of used stains
-    if args.save_channels:
+    if args.save_channel:
         path_channel_subdir = os.path.join(path_output, "separate_channels/")
         check_mkdir_output_path(path_channel_subdir)
-        plot_channels(filename, stain_ch0, path_channel_subdir, pathOutputLog, str_ch0, args.dpi)
-        plot_channels(filename, stain_ch1, path_channel_subdir, pathOutputLog, str_ch1, args.dpi)
-        plot_channels(filename, thresh_stain_ch0, path_channel_subdir, pathOutputLog, str_ch0 + '-positive area', args.dpi)
-        plot_channels(filename, thresh_stain_ch1, path_channel_subdir, pathOutputLog, str_ch1 + '-positive area', args.dpi)
+        save_channel(filename, stain_ch0, path_channel_subdir, path_output_log, str_ch0)
+        save_channel(filename, stain_ch1, path_channel_subdir, path_output_log, str_ch1)
+        save_channel(filename, thresh_stain_ch0, path_channel_subdir, path_output_log, str_ch0 + '-positive area')
+        save_channel(filename, thresh_stain_ch1, path_channel_subdir, path_output_log, str_ch1 + '-positive area')
 
     # Creating the composite image
     plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thresh_stain_ch0, thresh_stain_ch1,
                           str_ch0, str_ch1, str_ch2)
     plt.savefig(path_output_image, dpi=args.dpi)
 
-    log_and_console(pathOutputLog, "Image saved: {}".format(path_output_image))
+    log_and_console(path_output_log, "Image saved: {}".format(path_output_image))
 
     # In silent mode image will be closed immediately
     if not args.silent:
@@ -328,7 +327,8 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args):
     column_names = [str_col0, str_col1]
     df = pd.DataFrame(list_data, columns=column_names, index=list_file_group)
     df.index.name = 'Group'
-    df = df.apply(pd.to_numeric, errors='ignore')
+    df['str_col0'] = pd.to_numeric(df['str_col0'], errors='ignore')
+    df['str_col1'] = pd.to_numeric(df['str_col1'], errors='ignore')
 
     # Counting unique group number. Would be used for plot horizontal aspect
     group_num = df.groupby(df.index)[str_col0].nunique()
@@ -363,23 +363,23 @@ def plot_reference_figure(image_original, stain_ch0, stain_ch1, stain_ch2, thres
 
     plt.subplot(232)
     plt.title(str_ch0)
-    plt.imshow(stain_ch0, cmap=plt.cm.gray)
+    plt.imshow(stain_ch0, cmap='gray')
 
     plt.subplot(233)
     plt.title(str_ch1)
-    plt.imshow(stain_ch1, cmap=plt.cm.gray)
+    plt.imshow(stain_ch1, cmap='gray')
 
     plt.subplot(234)
     plt.title(str_ch2)
-    plt.imshow(stain_ch2, cmap=plt.cm.gray)
+    plt.imshow(stain_ch2, cmap='gray')
 
     plt.subplot(235)
     plt.title(str_ch0 + '-positive area')
-    plt.imshow(thresh_stain_ch0, cmap=plt.cm.gray)
+    plt.imshow(thresh_stain_ch0, cmap='gray')
 
     plt.subplot(236)
     plt.title(str_ch1 + '-positive area')
-    plt.imshow(thresh_stain_ch1, cmap=plt.cm.gray)
+    plt.imshow(thresh_stain_ch1, cmap='gray')
 
     plt.tight_layout()
 
@@ -395,7 +395,7 @@ def plot_group(data_frame, path_output, str_ch, str_col, args, group_num):
     sns.set_context("talk")
     # figsize aspect is regulated by number of groups to match the cases with
     # small and large group number
-    plt.figure(num=None, figsize=(2*group_num, 7), dpi=150)
+    plt.figure(num=None, figsize=(2 * group_num, 7), dpi=150)
     plt.ylim(0, 100)
     sns.boxplot(x=data_frame.index, y=str_col, data=data_frame, notch=args.notch)
     plt.tight_layout()
@@ -403,14 +403,14 @@ def plot_group(data_frame, path_output, str_ch, str_col, args, group_num):
     plt.savefig(path_output_image_svg)
 
 
-def plot_channels(filename, channel, path_channel_subdir, path_output_log, str_ch, dpi):
-    path_output_image = os.path.join(path_channel_subdir, str_ch + "_channel_" + filename.split(".")[0] +".png")
-    misc.imsave(path_output_image, channel)
+def save_channel(filename: str, channel: np.array, path_channel_subdir: str, path_output_log: str, channel_name: str):
+    path_output_image = os.path.join(path_channel_subdir, channel_name + "_channel_" + filename.split(".")[0] + ".png")
+    image = Image.fromarray(channel)
+    image.save(fp=path_output_image)
     log_and_console(path_output_log, "Image saved: {}".format(path_output_image))
 
 
 def json_parse(args):
-
     if args.matrix:
         json_path = args.matrix
     else:
@@ -498,8 +498,8 @@ def main():
     # End of the global timer
     elapsed_global = timeit.default_timer() - start_time_global
     if not args.silent:
-        average_image_time = (elapsed_global - len(filenames)*var_pause)/len(filenames)  # compensate the pause
+        average_image_time = (elapsed_global - len(filenames) * var_pause) / len(filenames)  # compensate the pause
     else:
-        average_image_time = elapsed_global/len(filenames)
+        average_image_time = elapsed_global / len(filenames)
     log_and_console(path_output_log, "Analysis time: {:.1f} seconds".format(elapsed_global))
     log_and_console(path_output_log, "Average time per image: {:.1f} seconds".format(average_image_time))

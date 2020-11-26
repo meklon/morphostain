@@ -3,6 +3,7 @@ import threading
 import multiprocessing
 import math
 
+
 def rgb2hsl(rgb):
 
     def core(_rgb, _hsl):
@@ -51,6 +52,7 @@ def rgb2hsl(rgb):
         thread.join()
 
     return hsl
+
 
 def hsl2rgb(hsl):
 

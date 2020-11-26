@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='morphostain',
-    version='1.0.8',
+    version='2.0.8',
     description='DAB-chromagen analysis tool',
     longer_description='''
 MorphoStain counts the stained area with
@@ -16,7 +16,7 @@ with other stains.
     url='https://github.com/meklon/morphostain',
     packages=find_packages(),
     install_requires=['pandas>=0.17.1', 'numpy>=1.11.0', 'scipy',
-        'scikit-image', 'matplotlib', 'seaborn'],
+        'scikit-image', 'matplotlib', 'seaborn', 'pillow'],
     setup_requires=['pytest-runner'],
     include_package_data = True,
     tests_require=['pytest'],
