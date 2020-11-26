@@ -16,7 +16,7 @@ from skimage.color import separate_stains
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-from hasel import hasel
+from hasel import convert
 
 
 # Optional imports of pandas and seaborn are located in functions
@@ -56,7 +56,7 @@ def parse_arguments():
                                                                                    " slow down the process.")
     parser.add_argument("-rs", "--resize", required=False, nargs='+', default=(768, 1024), type=int,
                         help="Image resolution for processing speed up. Higher resolution increases the accuracy,"
-                             " but can significally slow down the process. Default value is (768,1024)."
+                             " but can significantly slow down the process. Default value is (768,1024)."
                              " Pass values like '--resize 768 1024'")
     parser.add_argument("-m", "--matrix", required=False, help="Your matrix in a JSON formatted file")
     parser.add_argument("-sc", "--save_channels", required=False, help="Save separate stain channels to subfolder",
@@ -131,7 +131,7 @@ def separate_channels(image_original: np.array, matrix_dh: np.array, args) -> Tu
     # Extracting Lightness channel from HSL of original image
     # L-channel is multiplied to 100 to get the range 0-100 % from 0-1. It's easier to use with
     # empty area threshold
-    image_hsl = hasel.rgb2hsl(image_original)
+    image_hsl = convert.rgb2hsl(image_original)
     channel_lightness = (image_hsl[..., 2] * 100)
     return stain_ch0, stain_ch1, stain_ch2, channel_lightness
 
