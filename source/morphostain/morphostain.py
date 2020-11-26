@@ -99,10 +99,11 @@ def calc_deconv_matrix(vector_raw_stains):
     return matrix_stains
 
 
-def stretch_contrast(image: np.array) -> np.array:
+def stretch_contrast(image: np.array, hist_shift: int) -> np.array:
     target_range = 100
     stretched_image = (image - np.amin(image))/(np.amax(image) - np.amin(image))
-    return stretched_image * target_range
+    stretched_image = (stretched_image * target_range) - hist_shift
+    return np.clip(stretched_image, 0, 100)
 
 
 def separate_channels(image_original: np.array, matrix_dh: np.array, args) -> Tuple[np.array, np.array, np.array,
@@ -110,14 +111,18 @@ def separate_channels(image_original: np.array, matrix_dh: np.array, args) -> Tu
     """
     Separate the stains using the standard matrix from skimage
     """
+    hist_shift_ch0 = 10
+    hist_shift_ch1 = 18
+    hist_shift_ch2 = 0
+
     image_separated = rgb2hed(image_original)
     stain_ch0 = image_separated[..., 0]
     stain_ch1 = image_separated[..., 2]
     stain_ch2 = image_separated[..., 1]
 
-    stain_ch0 = stretch_contrast(stain_ch0)
-    stain_ch1 = stretch_contrast(stain_ch1)
-    stain_ch2 = stretch_contrast(stain_ch2)
+    stain_ch0 = stretch_contrast(image=stain_ch0, hist_shift=hist_shift_ch0)
+    stain_ch1 = stretch_contrast(image=stain_ch1, hist_shift=hist_shift_ch1)
+    stain_ch2 = stretch_contrast(image=stain_ch2, hist_shift=hist_shift_ch2)
 
     # Extracting Lightness channel from HSL of original image
     # L-channel is multiplied to 100 to get the range 0-100 % from 0-1. It's easier to use with
