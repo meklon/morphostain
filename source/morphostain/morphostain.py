@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from scipy import linalg
 from PIL import Image
-from skimage.color import separate_stains
+from skimage.color import separate_stains, rgb2hed
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
@@ -54,7 +54,7 @@ def parse_arguments():
                                                                                    "recommended for printing quality."
                                                                                    " High resolution can significantly"
                                                                                    " slow down the process.")
-    parser.add_argument("-rs", "--resize", required=False, nargs='+', default=(768, 1024), type=int,
+    parser.add_argument("-rs", "--resize", required=False, nargs='+', default=(1024, 768), type=int,
                         help="Image resolution for processing speed up. Higher resolution increases the accuracy,"
                              " but can significantly slow down the process. Default value is (768,1024)."
                              " Pass values like '--resize 768 1024'")
@@ -89,7 +89,7 @@ def validate_input(filenames_raw):
     return filenames_validated
 
 
-def calc_deconv_matrix(vector_raw_stains: np.array) -> np.array:
+def calc_deconv_matrix(vector_raw_stains):
     """
     Calculating matrix for deconvolution
     """
@@ -99,34 +99,25 @@ def calc_deconv_matrix(vector_raw_stains: np.array) -> np.array:
     return matrix_stains
 
 
+def stretch_contrast(image: np.array) -> np.array:
+    target_range = 100
+    stretched_image = (image - np.amin(image))/(np.amax(image) - np.amin(image))
+    return stretched_image * target_range
+
+
 def separate_channels(image_original: np.array, matrix_dh: np.array, args) -> Tuple[np.array, np.array, np.array,
                                                                                     np.array]:
     """
-    Separate the stains using the custom matrix
+    Separate the stains using the standard matrix from skimage
     """
-    parsed_json = json_parse(args)
-    # Histogram shift. This correction makes the background really blank. After the correction
-    # numpy clipping is performed to fit the 0-100 range
-    hist_shift_0 = parsed_json["hist_shift_0"]
-    hist_shift_1 = parsed_json["hist_shift_1"]
-    hist_shift_2 = parsed_json["hist_shift_2"]
-
-    image_separated = separate_stains(image_original, matrix_dh)
+    image_separated = rgb2hed(image_original)
     stain_ch0 = image_separated[..., 0]
-    stain_ch1 = image_separated[..., 1]
-    stain_ch2 = image_separated[..., 2]
+    stain_ch1 = image_separated[..., 2]
+    stain_ch2 = image_separated[..., 1]
 
-    stain_ch0 = (stain_ch0 + 1) * 200
-    stain_ch0 -= hist_shift_0
-    stain_ch0 = np.clip(stain_ch0, 0, 100)
-
-    stain_ch1 = (stain_ch1 + 1) * 200
-    stain_ch1 -= hist_shift_1
-    stain_ch1 = np.clip(stain_ch1, 0, 100)
-
-    stain_ch2 = (stain_ch2 + 1) * 200
-    stain_ch2 -= hist_shift_2
-    stain_ch2 = np.clip(stain_ch2, 0, 100)
+    stain_ch0 = stretch_contrast(stain_ch0)
+    stain_ch1 = stretch_contrast(stain_ch1)
+    stain_ch2 = stretch_contrast(stain_ch2)
 
     # Extracting Lightness channel from HSL of original image
     # L-channel is multiplied to 100 to get the range 0-100 % from 0-1. It's easier to use with
@@ -276,7 +267,7 @@ def image_process(var_pause, matrix_stains, path_output, path_output_log, str_ch
     list_rel_area = ([area_rel_stain_ch0, area_rel_stain_ch1])
 
     # Optional. Save the separate channels of used stains
-    if args.save_channel:
+    if args.save_channels:
         path_channel_subdir = os.path.join(path_output, "separate_channels/")
         check_mkdir_output_path(path_channel_subdir)
         save_channel(filename, stain_ch0, path_channel_subdir, path_output_log, str_ch0)
@@ -327,8 +318,8 @@ def group_analyze(filenames, list_data, str_ch0, str_ch1, path_output, args):
     column_names = [str_col0, str_col1]
     df = pd.DataFrame(list_data, columns=column_names, index=list_file_group)
     df.index.name = 'Group'
-    df['str_col0'] = pd.to_numeric(df['str_col0'], errors='ignore')
-    df['str_col1'] = pd.to_numeric(df['str_col1'], errors='ignore')
+    df[str_col0] = pd.to_numeric(df[str_col0], errors='ignore')
+    df[str_col1] = pd.to_numeric(df[str_col1], errors='ignore')
 
     # Counting unique group number. Would be used for plot horizontal aspect
     group_num = df.groupby(df.index)[str_col0].nunique()
@@ -503,3 +494,7 @@ def main():
         average_image_time = elapsed_global / len(filenames)
     log_and_console(path_output_log, "Analysis time: {:.1f} seconds".format(elapsed_global))
     log_and_console(path_output_log, "Average time per image: {:.1f} seconds".format(average_image_time))
+
+
+if __name__ == '__main__':
+    main()
